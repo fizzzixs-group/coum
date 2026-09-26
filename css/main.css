@@ -429,6 +429,57 @@ html, body {
   color: var(--text-main);
 }
 
+/* Карточки файлов */
+.msg-file-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  margin-top: 6px;
+  text-decoration: none;
+  color: var(--text-bright);
+  cursor: pointer;
+  border-radius: 2px;
+  max-width: 320px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.msg-file-card:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-color);
+}
+
+.file-icon {
+  font-size: 11px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  padding: 3px 6px;
+  color: var(--accent-color);
+  font-weight: bold;
+}
+
+.file-details {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.file-name {
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-bright);
+}
+
+.file-size {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
 /* Превью картинок */
 .msg-image-wrap {
   display: block;
@@ -507,7 +558,7 @@ html, body {
   background: var(--bg-active);
 }
 
-/* ==================== РЕДАКТОР ИЗОБРАЖЕНИЙ ==================== */
+/* Редактор изображений */
 #image-editor-modal {
   padding: 0;
   background: rgba(0, 0, 0, 0.96);

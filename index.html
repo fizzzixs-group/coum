@@ -54,18 +54,17 @@
       
       <!-- Форма отправки с кнопкой скрепки -->
       <form class="message-form" id="message-form">
-        <input type="file" id="image-file-input" accept="image/*" class="hidden" />
-        <button type="button" id="attach-btn" title="Прикрепить скриншот/фото">📎</button>
+        <input type="file" id="general-file-input" class="hidden" />
+        <button type="button" id="attach-btn" title="Прикрепить фото или файл">📎</button>
         <input type="text" id="message-input" autocomplete="off" placeholder="Сообщение или вставьте скриншот (Ctrl+V)..." />
         <button type="submit">ОТПРАВИТЬ</button>
       </form>
     </main>
   </div>
 
-  <!-- ВСТРОЕННЫЙ РЕДАКТОР ИЗОБРАЖЕНИЙ (КАК В ТГ) -->
+  <!-- ВСТРОЕННЫЙ РЕДАКТОР ИЗОБРАЖЕНИЙ -->
   <div id="image-editor-modal" class="modal-overlay hidden">
     <div class="editor-window">
-      <!-- Верхняя панель инструментов -->
       <div class="editor-toolbar">
         <div class="tool-group">
           <button type="button" class="tool-btn active" id="tool-brush" title="Кисть">КИСТЬ</button>
@@ -81,7 +80,6 @@
         </div>
       </div>
 
-      <!-- Вторая строка: палитра цветов и толщина -->
       <div class="editor-subbar">
         <div class="brush-size-wrap">
           <span>РАЗМЕР:</span>
@@ -100,13 +98,11 @@
         </div>
       </div>
 
-      <!-- Рабочая зона холста -->
       <div class="editor-canvas-container" id="editor-canvas-container">
         <canvas id="editor-canvas"></canvas>
         <div id="crop-selection-box" class="hidden"></div>
       </div>
 
-      <!-- Нижняя панель действий -->
       <div class="editor-actions">
         <button type="button" id="editor-quick-send-btn" class="editor-btn-secondary">ОТПРАВИТЬ КАК ЕСТЬ</button>
         <button type="button" id="editor-finish-crop-btn" class="editor-btn-accent hidden">ПРИМЕНИТЬ ОБРЕЗКУ</button>

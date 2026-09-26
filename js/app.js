@@ -13,6 +13,7 @@ const db = firebase.database();
 
 const ADMIN_PASS = 'ir87O9fjm_jrg';
 const DELETE_CONFIRM_PHRASE = 'да я хочу этого';
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 МБ максимум для базы
 
 const cidsRef = db.ref('allowed_cids');
 const usersRef = db.ref('users');
@@ -57,6 +58,14 @@ function formatDateSeparator(isoString) {
     options.year = 'numeric';
   }
   return date.toLocaleDateString('ru-RU', options).toUpperCase();
+}
+
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
 // ==================== REALTIME СЛУШАТЕЛИ ====================
@@ -129,7 +138,7 @@ const messagesContainer = document.getElementById('messages-container');
 const messageForm = document.getElementById('message-form');
 const messageInput = document.getElementById('message-input');
 const attachBtn = document.getElementById('attach-btn');
-const imageFileInput = document.getElementById('image-file-input');
+const generalFileInput = document.getElementById('general-file-input');
 
 // Просмотрщик картинок
 const imageViewerModal = document.getElementById('image-viewer-modal');
@@ -171,7 +180,6 @@ let cidPendingDelete = null;
 const imageEditorModal = document.getElementById('image-editor-modal');
 const editorCanvas = document.getElementById('editor-canvas');
 const editorCtx = editorCanvas.getContext('2d');
-const editorCanvasContainer = document.getElementById('editor-canvas-container');
 const cropSelectionBox = document.getElementById('crop-selection-box');
 
 const toolBrushBtn = document.getElementById('tool-brush');
@@ -191,7 +199,7 @@ const editorFinishCropBtn = document.getElementById('editor-finish-crop-btn');
 const editorSendBtn = document.getElementById('editor-send-btn');
 
 let rawOriginalImageBase64 = null;
-let currentTool = 'brush'; // 'brush', 'highlighter', 'eraser', 'text', 'crop'
+let currentTool = 'brush';
 let currentColor = '#ffffff';
 let brushSize = 6;
 let undoStack = [];
@@ -201,7 +209,6 @@ let isDrawing = false;
 let lastX = 0;
 let lastY = 0;
 
-// Кадрирование
 let isCropping = false;
 let cropStartX = 0;
 let cropStartY = 0;
@@ -222,7 +229,6 @@ function openEditorWithImage(srcBase64) {
 
   const img = new Image();
   img.onload = () => {
-    // Ограничиваем максимальное рабочее разрешение для быстродействия
     let w = img.width;
     let h = img.height;
     const maxDimension = 1400;
@@ -272,7 +278,6 @@ toolHighlighterBtn.onclick = () => setEditorTool('highlighter');
 toolEraserBtn.onclick = () => setEditorTool('eraser');
 toolCropBtn.onclick = () => setEditorTool('crop');
 
-// Добавление надписи
 toolTextBtn.onclick = () => {
   setEditorTool('text');
   const userText = prompt('Введите надпись на фото:');
@@ -285,7 +290,6 @@ toolTextBtn.onclick = () => {
   editorCtx.shadowColor = 'rgba(0,0,0,0.8)';
   editorCtx.shadowBlur = 6;
   
-  // Рисуем по центру снизу
   const x = editorCanvas.width / 2;
   const y = editorCanvas.height - 40;
   editorCtx.textAlign = 'center';
@@ -293,7 +297,6 @@ toolTextBtn.onclick = () => {
   editorCtx.shadowBlur = 0;
 };
 
-// Палитра
 paletteDots.forEach(dot => {
   dot.addEventListener('click', () => {
     paletteDots.forEach(d => d.classList.remove('active'));
@@ -314,10 +317,9 @@ brushSizeInput.addEventListener('input', (e) => {
   brushSize = parseInt(e.target.value, 10);
 });
 
-// Отмена шага
 editorUndoBtn.addEventListener('click', () => {
   if (undoStack.length <= 1) return;
-  undoStack.pop(); // Текущее состояние
+  undoStack.pop();
   const prevState = undoStack[undoStack.length - 1];
   const img = new Image();
   img.onload = () => {
@@ -334,23 +336,20 @@ editorCancelBtn.addEventListener('click', () => {
   rawOriginalImageBase64 = null;
 });
 
-// Быстрая отправка без изменений
 editorQuickSendBtn.addEventListener('click', () => {
   if (rawOriginalImageBase64) {
-    sendMessage('', rawOriginalImageBase64);
+    sendMessage('', rawOriginalImageBase64, null);
   }
   imageEditorModal.classList.add('hidden');
 });
 
-// Отправка отредактированного изображения (сжатие в легкий webp)
 editorSendBtn.addEventListener('click', () => {
   const resultWebP = editorCanvas.toDataURL('image/webp', 0.8);
-  sendMessage('', resultWebP);
+  sendMessage('', resultWebP, null);
   imageEditorModal.classList.add('hidden');
   rawOriginalImageBase64 = null;
 });
 
-// Координаты холста с учетом CSS масштабирования
 function getCanvasCoords(e) {
   const rect = editorCanvas.getBoundingClientRect();
   const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -361,13 +360,10 @@ function getCanvasCoords(e) {
 
   return {
     x: (clientX - rect.left) * scaleX,
-    y: (clientY - rect.top) * scaleY,
-    rawClientX: clientX,
-    rawClientY: clientY
+    y: (clientY - rect.top) * scaleY
   };
 }
 
-// Рисование и кадрирование на холсте
 function startDraw(e) {
   const coords = getCanvasCoords(e);
 
@@ -421,7 +417,6 @@ function moveDraw(e) {
     editorCtx.lineTo(coords.x, coords.y);
     editorCtx.stroke();
   } else if (currentTool === 'eraser') {
-    // В режиме ластика рисуем исходными пикселями или стираем в темный фон
     editorCtx.globalCompositeOperation = 'destination-out';
     editorCtx.lineWidth = brushSize * 2;
     editorCtx.beginPath();
@@ -448,7 +443,6 @@ editorCanvas.addEventListener('touchstart', startDraw, { passive: false });
 window.addEventListener('touchmove', moveDraw, { passive: false });
 window.addEventListener('touchend', stopDraw);
 
-// Логика кадрирования
 function updateCropBox() {
   const rect = editorCanvas.getBoundingClientRect();
   const scaleX = rect.width / editorCanvas.width;
@@ -486,27 +480,50 @@ editorFinishCropBtn.addEventListener('click', () => {
   setEditorTool('brush');
 });
 
-// ==================== СЖАТИЕ КАРТИНОК И ПЕРЕДАЧА В РЕДАКТОР ====================
+// ==================== ОБРАБОТКА ВХОДЯЩИХ ФАЙЛОВ И КАРТИНОК ====================
 
-function processInputImage(file) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    openEditorWithImage(e.target.result);
-  };
-  reader.readAsDataURL(file);
-}
+// Скрепка
+attachBtn.addEventListener('click', () => generalFileInput.click());
 
-// Кнопка скрепки
-attachBtn.addEventListener('click', () => imageFileInput.click());
-
-imageFileInput.addEventListener('change', (e) => {
+generalFileInput.addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  processInputImage(file);
-  imageFileInput.value = '';
+
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    alert(`Файл слишком большой! Лимит — 10 МБ (ваш файл: ${formatBytes(file.size)})`);
+    generalFileInput.value = '';
+    return;
+  }
+
+  // Если это картинка — открываем в редакторе
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = (ev) => openEditorWithImage(ev.target.result);
+    reader.readAsDataURL(file);
+  } else {
+    // Если это текстовый файл, скрипт (.py, .js, .cpp, .bin, .pdf и т.д.)
+    attachBtn.textContent = '⏳';
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const fileData = {
+        name: file.name,
+        size: file.size,
+        data: ev.target.result
+      };
+      sendMessage('', null, fileData);
+      attachBtn.textContent = '📎';
+    };
+    reader.onerror = () => {
+      alert('Ошибка при чтении файла');
+      attachBtn.textContent = '📎';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  generalFileInput.value = '';
 });
 
-// Вставка скриншота из буфера обмена (Ctrl + V) -> сразу в редактор
+// Вставка скриншота из буфера обмена (Ctrl + V)
 window.addEventListener('paste', (e) => {
   if (!currentAuthCID || !activePeerCID) return;
 
@@ -516,7 +533,9 @@ window.addEventListener('paste', (e) => {
       e.preventDefault();
       const file = item.getAsFile();
       if (!file) continue;
-      processInputImage(file);
+      const reader = new FileReader();
+      reader.onload = (ev) => openEditorWithImage(ev.target.result);
+      reader.readAsDataURL(file);
       break;
     }
   }
@@ -915,6 +934,21 @@ function renderMessages() {
       `;
     }
 
+    // Рендер файла кода или документа
+    if (msg.file) {
+      contentHTML += `
+        <div>
+          <a class="msg-file-card" href="${msg.file.data}" download="${escapeHTML(msg.file.name)}">
+            <span class="file-icon">[FILE]</span>
+            <div class="file-details">
+              <span class="file-name">${escapeHTML(msg.file.name)}</span>
+              <span class="file-size">${formatBytes(msg.file.size)} (скачать)</span>
+            </div>
+          </a>
+        </div>
+      `;
+    }
+
     row.innerHTML = `
       <span class="msg-time">[${timeFormatted}]</span>
       <span class="msg-author">${escapeHTML(authorName)}:</span>
@@ -934,9 +968,9 @@ function renderMessages() {
 
 // ==================== ОТПРАВКА СООБЩЕНИЙ ====================
 
-function sendMessage(text = '', imageBase64 = null) {
+function sendMessage(text = '', imageBase64 = null, fileObject = null) {
   if (!activePeerCID || !currentAuthCID) return;
-  if (!text && !imageBase64) return;
+  if (!text && !imageBase64 && !fileObject) return;
 
   const chatKey = getChatKey(currentAuthCID, activePeerCID);
 
@@ -950,6 +984,10 @@ function sendMessage(text = '', imageBase64 = null) {
     newMsg.image = imageBase64;
   }
 
+  if (fileObject) {
+    newMsg.file = fileObject;
+  }
+
   messagesRef.child(chatKey).push(newMsg);
 }
 
@@ -957,7 +995,7 @@ messageForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const text = messageInput.value.trim();
   if (!text) return;
-  sendMessage(text, null);
+  sendMessage(text, null, null);
   messageInput.value = '';
 });
 
