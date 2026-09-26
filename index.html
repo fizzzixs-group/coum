@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>coum&</title>
 
-  <!-- Полноэкранный режим мобильного приложения (PWA / Standalone) -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,7 +17,6 @@
   <!-- ЭКРАН АВТОРИЗАЦИИ ПО CID -->
   <div id="auth-screen" class="screen">
     <div class="auth-box">
-      <!-- 5 быстрых тапов открывают ввод пароля -->
       <div id="auth-logo" class="auth-logo-title">coum&</div>
       <div class="auth-input-row">
         <input type="password" id="auth-input" autofocus autocomplete="off" placeholder="CID" />
@@ -42,14 +40,13 @@
       <div class="peers-list" id="peers-list"></div>
 
       <div class="sidebar-bottom">
-        <button id="logout-btn">ВЫХОД</button>
+        <button id="open-settings-btn">[НАСТРОЙКИ]</button>
       </div>
     </aside>
 
     <!-- Область чата -->
     <main class="chat-area" id="app-chat-area">
       <div class="chat-topbar">
-        <!-- Кнопка «Назад» для смартфонов -->
         <button id="mobile-back-btn" class="mobile-back-btn">←</button>
         <span id="active-peer-header">---</span>
       </div>
@@ -61,7 +58,70 @@
     </main>
   </div>
 
-  <!-- МОДАЛКА ПАРОЛЯ АДМИНА (ТОЛЬКО ПОЛЕ С БУКВОЙ V) -->
+  <!-- МОДАЛКА НАСТРОЕК -->
+  <div id="settings-modal" class="modal-overlay hidden">
+    <div class="settings-window">
+      <div class="settings-header">
+        <span>НАСТРОЙКИ</span>
+        <button id="settings-close-btn">[X]</button>
+      </div>
+
+      <div class="settings-section">
+        <label class="settings-label">МАСШТАБ ИНТЕРФЕЙСА:</label>
+        <div class="scale-options">
+          <button class="scale-btn" data-scale="0.8">80%</button>
+          <button class="scale-btn" data-scale="0.9">90%</button>
+          <button class="scale-btn active" data-scale="1.0">100%</button>
+          <button class="scale-btn" data-scale="1.15">115%</button>
+          <button class="scale-btn" data-scale="1.3">130%</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <label class="settings-label">ВЫБОР ТЕМЫ:</label>
+        <div class="theme-grid">
+          <button class="theme-select-btn" data-theme="black">Чёрная</button>
+          <button class="theme-select-btn" data-theme="gray">Серая</button>
+          <button class="theme-select-btn" data-theme="light">Светлая</button>
+          <button class="theme-select-btn" data-theme="lime">Салатовая</button>
+          <button class="theme-select-btn" data-theme="purple">Фиолетовая</button>
+          <button class="theme-select-btn" data-theme="red">Красная</button>
+          <button class="theme-select-btn" data-theme="yellow">Жёлтая</button>
+          <button class="theme-select-btn" data-theme="pink">Розовая</button>
+          <button class="theme-select-btn" data-theme="ukraine">Украинская</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <label class="settings-label">СВОЯ ТЕМА:</label>
+        <div class="custom-theme-controls">
+          <div class="color-picker-item">
+            <span>Фон:</span>
+            <input type="color" id="custom-color-bg" value="#0d1117" />
+          </div>
+          <div class="color-picker-item">
+            <span>Панели:</span>
+            <input type="color" id="custom-color-panel" value="#161b22" />
+          </div>
+          <div class="color-picker-item">
+            <span>Текст:</span>
+            <input type="color" id="custom-color-text" value="#e6edf3" />
+          </div>
+          <div class="color-picker-item">
+            <span>Акцент:</span>
+            <input type="color" id="custom-color-accent" value="#58a6ff" />
+          </div>
+          <button id="apply-custom-theme-btn">ПРИМЕНИТЬ СВОЮ</button>
+        </div>
+      </div>
+
+      <div class="settings-section danger-zone">
+        <button id="settings-logout-btn">ВЫЙТИ ИЗ АККАУНТА</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА ПАРОЛЯ АДМИНА -->
   <div id="admin-auth-modal" class="modal-overlay hidden">
     <div class="modal-window">
       <input type="password" id="admin-pass-input" placeholder="v" autocomplete="off" />
@@ -84,6 +144,23 @@
 
       <div class="admin-list-title">СПИСОК ВСЕХ CID В ОБЛАКЕ:</div>
       <div class="admin-cid-list" id="admin-cid-list"></div>
+    </div>
+  </div>
+
+  <!-- ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ ПОЛЬЗОВАТЕЛЯ -->
+  <div id="delete-confirm-modal" class="modal-overlay hidden">
+    <div class="confirm-window">
+      <div class="confirm-title">УДАЛЕНИЕ CID НАВСЕГДА</div>
+      <div class="confirm-desc">
+        Пользователь исчезнет навсегда без возможности восстановления.<br>
+        Чтобы подтвердить, введите фразу:<br>
+        <strong>да я хочу этого</strong>
+      </div>
+      <input type="text" id="delete-phrase-input" autocomplete="off" placeholder="Введите фразу..." />
+      <div class="confirm-actions">
+        <button id="confirm-delete-btn" disabled>УДАЛИТЬ</button>
+        <button id="cancel-delete-btn">ОТМЕНА</button>
+      </div>
     </div>
   </div>
 

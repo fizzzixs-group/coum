@@ -12,23 +12,70 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 const ADMIN_PASS = 'ir87O9fjm_jrg';
+const DELETE_CONFIRM_PHRASE = 'да я хочу этого';
 
 const cidsRef = db.ref('allowed_cids');
 const usersRef = db.ref('users');
 const messagesRef = db.ref('messages');
 
 let cloudCids = [];
+let cloudCidsKeys = {}; // key in DB -> cid string
 let cloudUsers = {};
 let cloudMessages = {};
 
 let currentAuthCID = localStorage.getItem('coum_active_cid') || null;
 let activePeerCID = localStorage.getItem('coum_last_peer') || null;
 
+// ==================== СИСТЕМА ДАТ И ЧАСОВОГО ПОЯСА ====================
+
+// Автоматически берет локальный часовой пояс браузера
+const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+function formatMessageTime(isoString) {
+  if (!isoString) return '--:--';
+  const d = new Date(isoString);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function getMessageDayKey(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function formatDateSeparator(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const now = new Date();
+
+  const isToday = date.toDateString() === now.toDateString();
+  if (isToday) return 'СЕГОДНЯ';
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return 'ВЧЕРА';
+
+  // Пример: "12 июля" или "12 июля 2025"
+  const options = { day: 'numeric', month: 'long' };
+  if (date.getFullYear() !== now.getFullYear()) {
+    options.year = 'numeric';
+  }
+  return date.toLocaleDateString('ru-RU', options).toUpperCase();
+}
+
 // ==================== REALTIME СЛУШАТЕЛИ ====================
 
 cidsRef.on('value', (snapshot) => {
-  const data = snapshot.val();
-  cloudCids = data ? Object.values(data) : [];
+  const data = snapshot.val() || {};
+  cloudCidsKeys = data;
+  cloudCids = Object.values(data);
+
+  // Если текущего пользователя удалили из базы — принудительно выкидываем
+  if (currentAuthCID && !cloudCids.includes(currentAuthCID)) {
+    performLogout();
+    return;
+  }
+
   if (currentAuthCID) renderPeersList();
   if (!adminPanel.classList.contains('hidden')) renderAdminCIDList();
 });
@@ -86,8 +133,21 @@ const mobileBackBtn = document.getElementById('mobile-back-btn');
 const messagesContainer = document.getElementById('messages-container');
 const messageForm = document.getElementById('message-form');
 const messageInput = document.getElementById('message-input');
-const logoutBtn = document.getElementById('logout-btn');
 
+// Настройки
+const openSettingsBtn = document.getElementById('open-settings-btn');
+const settingsModal = document.getElementById('settings-modal');
+const settingsCloseBtn = document.getElementById('settings-close-btn');
+const settingsLogoutBtn = document.getElementById('settings-logout-btn');
+const scaleButtons = document.querySelectorAll('.scale-btn');
+const themeButtons = document.querySelectorAll('.theme-select-btn');
+const applyCustomThemeBtn = document.getElementById('apply-custom-theme-btn');
+const customBgInput = document.getElementById('custom-color-bg');
+const customPanelInput = document.getElementById('custom-color-panel');
+const customTextInput = document.getElementById('custom-color-text');
+const customAccentInput = document.getElementById('custom-color-accent');
+
+// Админка
 const adminAuthModal = document.getElementById('admin-auth-modal');
 const adminPassInput = document.getElementById('admin-pass-input');
 const adminPanel = document.getElementById('admin-panel');
@@ -96,6 +156,117 @@ const generateCidBtn = document.getElementById('generate-cid-btn');
 const copyCidBtn = document.getElementById('copy-cid-btn');
 const lastGeneratedCidEl = document.getElementById('last-generated-cid');
 const adminCidListEl = document.getElementById('admin-cid-list');
+
+// Удаление пользователя
+const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+const deletePhraseInput = document.getElementById('delete-phrase-input');
+const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+let cidPendingDelete = null;
+
+// ==================== ТЕМЫ И МАСШТАБ ====================
+
+function initThemeAndScale() {
+  const savedScale = localStorage.getItem('coum_ui_scale') || '1.0';
+  applyScale(savedScale);
+
+  const savedTheme = localStorage.getItem('coum_ui_theme') || 'black';
+  if (savedTheme === 'custom') {
+    const custom = JSON.parse(localStorage.getItem('coum_custom_colors') || '{}');
+    applyCustomTheme(custom.bg, custom.panel, custom.text, custom.accent);
+  } else {
+    applyTheme(savedTheme);
+  }
+}
+
+function applyScale(scaleVal) {
+  document.documentElement.style.setProperty('--ui-scale', scaleVal);
+  localStorage.setItem('coum_ui_scale', scaleVal);
+  scaleButtons.forEach(b => {
+    b.classList.toggle('active', b.dataset.scale === scaleVal);
+  });
+}
+
+scaleButtons.forEach(btn => {
+  btn.addEventListener('click', () => applyScale(btn.dataset.scale));
+});
+
+function applyTheme(themeName) {
+  // Очищаем кастомные стили
+  document.documentElement.removeAttribute('style');
+  const curScale = localStorage.getItem('coum_ui_scale') || '1.0';
+  document.documentElement.style.setProperty('--ui-scale', curScale);
+
+  if (themeName === 'black') {
+    document.body.removeAttribute('data-theme');
+  } else {
+    document.body.setAttribute('data-theme', themeName);
+  }
+  localStorage.setItem('coum_ui_theme', themeName);
+
+  themeButtons.forEach(b => {
+    b.classList.toggle('active', b.dataset.theme === themeName);
+  });
+}
+
+themeButtons.forEach(btn => {
+  btn.addEventListener('click', () => applyTheme(btn.dataset.theme));
+});
+
+function applyCustomTheme(bg, panel, text, accent) {
+  document.body.removeAttribute('data-theme');
+  const curScale = localStorage.getItem('coum_ui_scale') || '1.0';
+  
+  const root = document.documentElement;
+  root.style.setProperty('--ui-scale', curScale);
+  root.style.setProperty('--bg-main', bg);
+  root.style.setProperty('--bg-panel', panel);
+  root.style.setProperty('--bg-input', bg);
+  root.style.setProperty('--bg-hover', panel);
+  root.style.setProperty('--bg-active', panel);
+  root.style.setProperty('--text-main', text);
+  root.style.setProperty('--text-bright', text);
+  root.style.setProperty('--accent-color', accent);
+  root.style.setProperty('--border-color', panel);
+
+  localStorage.setItem('coum_ui_theme', 'custom');
+  localStorage.setItem('coum_custom_colors', JSON.stringify({ bg, panel, text, accent }));
+
+  themeButtons.forEach(b => b.classList.remove('active'));
+}
+
+applyCustomThemeBtn.addEventListener('click', () => {
+  applyCustomTheme(
+    customBgInput.value,
+    customPanelInput.value,
+    customTextInput.value,
+    customAccentInput.value
+  );
+});
+
+// Открытие и закрытие настроек
+openSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+settingsCloseBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+
+// Кнопка выхода с обязательным подтверждением
+settingsLogoutBtn.addEventListener('click', () => {
+  if (confirm('Вы уверены, что хотите выйти из аккаунта?')) {
+    settingsModal.classList.add('hidden');
+    performLogout();
+  }
+});
+
+function performLogout() {
+  localStorage.removeItem('coum_active_cid');
+  localStorage.removeItem('coum_last_peer');
+  currentAuthCID = null;
+  activePeerCID = null;
+  appScreen.classList.remove('chat-opened');
+  appScreen.classList.add('hidden');
+  authScreen.classList.remove('hidden');
+  authInput.value = '';
+  authError.classList.add('hidden');
+}
 
 // ==================== СЕКРЕТНЫЙ ВХОД В АДМИНКУ ====================
 
@@ -180,22 +351,66 @@ copyCidBtn.addEventListener('click', () => {
   }
 });
 
+// Рендер CID в админке с кнопкой полного удаления
 function renderAdminCIDList() {
   adminCidListEl.innerHTML = '';
-  if (cloudCids.length === 0) {
-    adminCidListEl.innerHTML = '<span style="color:#444;">База пуста. Нажмите кнопку выше.</span>';
+  const entries = Object.entries(cloudCidsKeys);
+
+  if (entries.length === 0) {
+    adminCidListEl.innerHTML = '<span style="color:#555;">База пуста.</span>';
     return;
   }
 
-  cloudCids.forEach(cid => {
-    const item = document.createElement('div');
+  entries.forEach(([dbKey, cid]) => {
+    const row = document.createElement('div');
+    row.className = 'admin-cid-row';
+
+    const info = document.createElement('span');
     const namePart = cloudUsers[cid]?.name ? ` [${cloudUsers[cid].name}]` : '';
-    item.textContent = `${cid}${namePart}`;
-    adminCidListEl.appendChild(item);
+    info.textContent = `${cid}${namePart}`;
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'admin-del-btn';
+    delBtn.textContent = '[УДАЛИТЬ]';
+    delBtn.onclick = () => openDeleteModal(dbKey, cid);
+
+    row.appendChild(info);
+    row.appendChild(delBtn);
+    adminCidListEl.appendChild(row);
   });
 }
 
-// ==================== ВХОД / ВЫХОД ====================
+// Модальное окно подтверждения удаления
+function openDeleteModal(dbKey, cid) {
+  cidPendingDelete = { dbKey, cid };
+  deleteConfirmModal.classList.remove('hidden');
+  deletePhraseInput.value = '';
+  confirmDeleteBtn.disabled = true;
+  setTimeout(() => deletePhraseInput.focus(), 50);
+}
+
+deletePhraseInput.addEventListener('input', () => {
+  confirmDeleteBtn.disabled = (deletePhraseInput.value.trim() !== DELETE_CONFIRM_PHRASE);
+});
+
+cancelDeleteBtn.addEventListener('click', () => {
+  deleteConfirmModal.classList.add('hidden');
+  cidPendingDelete = null;
+});
+
+confirmDeleteBtn.addEventListener('click', async () => {
+  if (!cidPendingDelete) return;
+  const { dbKey, cid } = cidPendingDelete;
+
+  // Удаляем навсегда из allowed_cids и профиль из users
+  await cidsRef.child(dbKey).remove();
+  await usersRef.child(cid).remove();
+
+  deleteConfirmModal.classList.add('hidden');
+  cidPendingDelete = null;
+});
+
+// ==================== ВХОД В ПРИЛОЖЕНИЕ ====================
 
 async function attemptLogin(inputCID) {
   const cleanCID = inputCID.trim();
@@ -247,18 +462,6 @@ function enterApp() {
   renderMessages();
 }
 
-logoutBtn.addEventListener('click', () => {
-  localStorage.removeItem('coum_active_cid');
-  localStorage.removeItem('coum_last_peer');
-  currentAuthCID = null;
-  activePeerCID = null;
-  appScreen.classList.remove('chat-opened');
-  appScreen.classList.add('hidden');
-  authScreen.classList.remove('hidden');
-  authInput.value = '';
-  authError.classList.add('hidden');
-});
-
 mobileBackBtn.addEventListener('click', () => {
   appScreen.classList.remove('chat-opened');
 });
@@ -285,7 +488,7 @@ function renderPeersList() {
   const peers = cloudCids.filter(cid => cid !== currentAuthCID);
 
   if (peers.length === 0) {
-    peersListEl.innerHTML = '<div style="padding:12px;color:#444;font-size:12px;">НЕТ ДРУГИХ CID</div>';
+    peersListEl.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:12px;">НЕТ ДРУГИХ CID</div>';
     activePeerHeaderEl.textContent = 'НЕТ СОБЕСЕДНИКА';
     return;
   }
@@ -328,15 +531,28 @@ function renderMessages() {
 
   list.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
+  let lastDayKey = null;
+
   list.forEach(msg => {
+    const currentDayKey = getMessageDayKey(msg.createdAt);
+
+    // Если наступил новый день — вставляем разделитель даты
+    if (currentDayKey && currentDayKey !== lastDayKey) {
+      lastDayKey = currentDayKey;
+      const dateDiv = document.createElement('div');
+      dateDiv.className = 'date-separator';
+      dateDiv.innerHTML = `<span>${formatDateSeparator(msg.createdAt)}</span>`;
+      messagesContainer.appendChild(dateDiv);
+    }
+
     const row = document.createElement('div');
     row.className = 'msg-row';
     const isSelf = msg.sender === currentAuthCID;
     const authorName = isSelf ? 'Я' : (cloudUsers[msg.sender]?.name || msg.sender);
-    const time = msg.createdAt ? msg.createdAt.slice(11, 16) : '--:--';
+    const timeFormatted = formatMessageTime(msg.createdAt);
 
     row.innerHTML = `
-      <span class="msg-time">[${time}]</span>
+      <span class="msg-time">[${timeFormatted}]</span>
       <span class="msg-author">${escapeHTML(authorName)}:</span>
       <span class="msg-text">${escapeHTML(msg.text)}</span>
     `;
@@ -363,14 +579,15 @@ messageForm.addEventListener('submit', (e) => {
   messageInput.value = '';
 });
 
-// Автоскролл сообщений при клике в поле ввода на телефоне (когда выезжает клавиатура)
 messageInput.addEventListener('focus', () => {
   setTimeout(() => {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }, 300);
 });
 
-// Проверка сессии при запуске
+// Инициализация при старте
+initThemeAndScale();
+
 if (currentAuthCID) {
   cidsRef.once('value').then((snap) => {
     const list = snap.val() ? Object.values(snap.val()) : [];
