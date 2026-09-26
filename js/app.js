@@ -102,7 +102,6 @@ const adminCidListEl = document.getElementById('admin-cid-list');
 let logoClickCount = 0;
 let logoClickTimer = null;
 
-// 5 быстрых тапов по логотипу
 authLogo.addEventListener('click', () => {
   logoClickCount++;
   clearTimeout(logoClickTimer);
@@ -118,7 +117,6 @@ authLogo.addEventListener('click', () => {
   }, 1500);
 });
 
-// Хоткей для ПК (Ctrl+Alt+9 или Ctrl+Alt+Numpad9)
 window.addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.altKey && (e.code === 'Numpad9' || e.code === 'Digit9' || e.key === '9')) {
     e.preventDefault();
@@ -261,7 +259,6 @@ logoutBtn.addEventListener('click', () => {
   authError.classList.add('hidden');
 });
 
-// Стрелка «Назад» для мобилок
 mobileBackBtn.addEventListener('click', () => {
   appScreen.classList.remove('chat-opened');
 });
@@ -364,6 +361,13 @@ messageForm.addEventListener('submit', (e) => {
 
   messagesRef.child(chatKey).push(newMsg);
   messageInput.value = '';
+});
+
+// Автоскролл сообщений при клике в поле ввода на телефоне (когда выезжает клавиатура)
+messageInput.addEventListener('focus', () => {
+  setTimeout(() => {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }, 300);
 });
 
 // Проверка сессии при запуске
