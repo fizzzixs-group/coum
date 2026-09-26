@@ -47,11 +47,10 @@ body {
   color: #fff;
   cursor: pointer;
   user-select: none;
-  transition: opacity 0.2s;
 }
 
 .auth-logo-title:active {
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .auth-input-row {
@@ -295,66 +294,42 @@ body {
   color: #fff;
 }
 
-/* Модалки и админка */
+/* Модалки */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.9);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  padding: 16px;
 }
 
 .modal-window {
-  background: #0a0a0a;
-  border: 1px solid #333;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 100%;
-  max-width: 300px;
-}
-
-.modal-label {
-  font-size: 12px;
-  color: #777;
+  background: #000;
+  border: 1px solid #222;
+  padding: 6px;
 }
 
 #admin-pass-input {
   background: #000;
-  border: 1px solid #333;
+  border: none;
   color: #fff;
-  padding: 8px 10px;
+  padding: 8px 12px;
   outline: none;
-  width: 100%;
+  font-size: 15px;
+  width: 220px;
+  text-align: center;
 }
 
-.modal-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.modal-actions button {
-  flex: 1;
-  background: #111;
-  color: #aaa;
-  border: 1px solid #222;
-  padding: 6px;
-  cursor: pointer;
-}
-
-.modal-actions button:hover {
-  background: #222;
-  color: #fff;
+#admin-pass-input::placeholder {
+  color: #444;
 }
 
 .admin-window {
   background: #080808;
   border: 1px solid #333;
-  width: 100%;
+  width: 90%;
   max-width: 520px;
   padding: 16px;
   display: flex;
@@ -413,7 +388,7 @@ body {
   background: #000;
 }
 
-/* ==================== МОБИЛЬНАЯ АДАПТАЦИЯ ==================== */
+/* Мобильная версия */
 @media (max-width: 768px) {
   .sidebar {
     width: 100%;
@@ -426,7 +401,6 @@ body {
     height: 100%;
   }
 
-  /* Когда открыт активный чат на телефоне */
   #app-screen.chat-opened .sidebar {
     display: none;
   }

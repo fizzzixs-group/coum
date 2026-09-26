@@ -90,8 +90,6 @@ const logoutBtn = document.getElementById('logout-btn');
 
 const adminAuthModal = document.getElementById('admin-auth-modal');
 const adminPassInput = document.getElementById('admin-pass-input');
-const adminAuthSubmit = document.getElementById('admin-auth-submit');
-const adminAuthCancel = document.getElementById('admin-auth-cancel');
 const adminPanel = document.getElementById('admin-panel');
 const adminCloseBtn = document.getElementById('admin-close-btn');
 const generateCidBtn = document.getElementById('generate-cid-btn');
@@ -99,11 +97,12 @@ const copyCidBtn = document.getElementById('copy-cid-btn');
 const lastGeneratedCidEl = document.getElementById('last-generated-cid');
 const adminCidListEl = document.getElementById('admin-cid-list');
 
-// ==================== СЕКРЕТНЫЙ ВХОД В АДМИНКУ (ТАПЫ / КЛИКИ) ====================
+// ==================== СЕКРЕТНЫЙ ВХОД В АДМИНКУ ====================
 
 let logoClickCount = 0;
 let logoClickTimer = null;
 
+// 5 быстрых тапов по логотипу
 authLogo.addEventListener('click', () => {
   logoClickCount++;
   clearTimeout(logoClickTimer);
@@ -114,13 +113,12 @@ authLogo.addEventListener('click', () => {
     return;
   }
 
-  // Если не успел накликать 5 раз за 1.5 секунды — сброс
   logoClickTimer = setTimeout(() => {
     logoClickCount = 0;
   }, 1500);
 });
 
-// Запасной хоткей для ПК (Ctrl+Alt+9 или Ctrl+Alt+Numpad9)
+// Хоткей для ПК (Ctrl+Alt+9 или Ctrl+Alt+Numpad9)
 window.addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.altKey && (e.code === 'Numpad9' || e.code === 'Digit9' || e.key === '9')) {
     e.preventDefault();
@@ -131,27 +129,29 @@ window.addEventListener('keydown', (e) => {
 function openAdminAuth() {
   adminAuthModal.classList.remove('hidden');
   adminPassInput.value = '';
-  setTimeout(() => adminPassInput.focus(), 100);
+  setTimeout(() => adminPassInput.focus(), 50);
 }
 
-function verifyAdminPass() {
-  if (adminPassInput.value === ADMIN_PASS) {
-    adminAuthModal.classList.add('hidden');
-    openAdminPanel();
-  } else {
+adminPassInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    if (adminPassInput.value === ADMIN_PASS) {
+      adminAuthModal.classList.add('hidden');
+      openAdminPanel();
+    } else {
+      adminAuthModal.classList.add('hidden');
+      adminPassInput.value = '';
+    }
+  } else if (e.key === 'Escape') {
     adminAuthModal.classList.add('hidden');
     adminPassInput.value = '';
   }
-}
-
-adminAuthSubmit.addEventListener('click', verifyAdminPass);
-adminPassInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') verifyAdminPass();
-  if (e.key === 'Escape') adminAuthModal.classList.add('hidden');
 });
 
-adminAuthCancel.addEventListener('click', () => {
-  adminAuthModal.classList.add('hidden');
+adminAuthModal.addEventListener('click', (e) => {
+  if (e.target === adminAuthModal) {
+    adminAuthModal.classList.add('hidden');
+    adminPassInput.value = '';
+  }
 });
 
 function openAdminPanel() {
@@ -261,7 +261,7 @@ logoutBtn.addEventListener('click', () => {
   authError.classList.add('hidden');
 });
 
-// Стрелка назад для мобилок
+// Стрелка «Назад» для мобилок
 mobileBackBtn.addEventListener('click', () => {
   appScreen.classList.remove('chat-opened');
 });
@@ -312,7 +312,6 @@ function renderPeersList() {
       localStorage.setItem('coum_last_peer', peerCID);
       renderPeersList();
       renderMessages();
-      // На телефоне переключаем экран в режим чата
       appScreen.classList.add('chat-opened');
     };
     peersListEl.appendChild(btn);
@@ -367,7 +366,7 @@ messageForm.addEventListener('submit', (e) => {
   messageInput.value = '';
 });
 
-// Проверка сессии
+// Проверка сессии при запуске
 if (currentAuthCID) {
   cidsRef.once('value').then((snap) => {
     const list = snap.val() ? Object.values(snap.val()) : [];

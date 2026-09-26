@@ -11,10 +11,10 @@
   <!-- ЭКРАН АВТОРИЗАЦИИ ПО CID -->
   <div id="auth-screen" class="screen">
     <div class="auth-box">
-      <!-- Секретный логотип: 5 быстрых кликов/тапов открывают админку -->
-      <div id="auth-logo" class="auth-logo-title" title="coum">coum&</div>
+      <!-- 5 быстрых тапов открывают ввод пароля -->
+      <div id="auth-logo" class="auth-logo-title">coum&</div>
       <div class="auth-input-row">
-        <input type="password" id="auth-input" autofocus autocomplete="off" placeholder="ВВЕДИТЕ CID" />
+        <input type="password" id="auth-input" autofocus autocomplete="off" placeholder="CID" />
         <div id="auth-error" class="hidden">✕</div>
       </div>
     </div>
@@ -29,7 +29,7 @@
           <div class="user-display-name" id="my-display-name">---</div>
           <div class="user-fixed-cid" id="my-fixed-cid">CID: ---</div>
         </div>
-        <button id="edit-name-btn" title="Сменить имя">[ИЗМЕНИТЬ]</button>
+        <button id="edit-name-btn">[ИЗМЕНИТЬ]</button>
       </div>
 
       <div class="peers-list" id="peers-list"></div>
@@ -54,15 +54,10 @@
     </main>
   </div>
 
-  <!-- МОДАЛКА ПАРОЛЯ АДМИНА -->
+  <!-- МОДАЛКА ПАРОЛЯ АДМИНА (ТОЛЬКО ПОЛЕ С БУКВОЙ V) -->
   <div id="admin-auth-modal" class="modal-overlay hidden">
     <div class="modal-window">
-      <div class="modal-label">АДМИН ДОСТУП:</div>
-      <input type="password" id="admin-pass-input" placeholder="пароль" autocomplete="off" />
-      <div class="modal-actions">
-        <button id="admin-auth-submit">ВОЙТИ</button>
-        <button id="admin-auth-cancel">ОТМЕНА</button>
-      </div>
+      <input type="password" id="admin-pass-input" placeholder="v" autocomplete="off" />
     </div>
   </div>
 
