@@ -1,0 +1,13 @@
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "Coum",
+  "orientation": "any",
+  "scope": "/coum/",
+  "short_name": "coum",
+  "start_url": "/coum/",
+  "theme_color": "#000000",
+  "id": "coum-app",
+  "description": "fizzzixs"
+}
