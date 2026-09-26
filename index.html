@@ -30,16 +30,33 @@
 
   <!-- РАБОЧИЙ ЭКРАН -->
   <div id="app-screen" class="screen hidden">
-    <!-- Левая панель (список чатов) -->
+    <!-- Левая панель (список чатов и поиск) -->
     <aside class="sidebar" id="app-sidebar">
       <div class="sidebar-top">
         <div class="user-profile">
           <div class="user-display-name" id="my-display-name">---</div>
-          <div class="user-fixed-cid" id="my-fixed-cid">CID: ---</div>
+          <div class="user-fixed-cid" id="my-fixed-cid" title="Нажмите, чтобы скопировать">CID: ---</div>
         </div>
         <button id="edit-name-btn">[ИЗМЕНИТЬ]</button>
       </div>
 
+      <!-- Блок поиска -->
+      <div class="sidebar-search-box">
+        <div class="search-input-wrapper">
+          <input type="text" id="contact-search-input" placeholder="Поиск контактов..." autocomplete="off">
+          <button type="button" id="search-clear-btn" class="hidden">✕</button>
+        </div>
+        <div class="search-filters">
+          <span class="search-filter-label">РЕЖИМ:</span>
+          <button type="button" class="search-filter-btn active" id="filter-name-btn" data-mode="name">НИК</button>
+          <button type="button" class="search-filter-btn" id="filter-cid-btn" data-mode="cid">CID</button>
+        </div>
+      </div>
+
+      <!-- Заголовок секции списка -->
+      <div class="sidebar-section-title" id="sidebar-section-title">ДИАЛОГИ</div>
+
+      <!-- Контейнер для активных чатов или результатов поиска -->
       <div class="peers-list" id="peers-list"></div>
 
       <div class="sidebar-bottom">
@@ -52,22 +69,67 @@
       <div class="chat-topbar">
         <div class="chat-topbar-left">
           <button id="mobile-back-btn" class="mobile-back-btn">←</button>
-          <span id="active-peer-header">---</span>
+          <span id="active-peer-header">ВЫБЕРИТЕ ДИАЛОГ</span>
         </div>
         <!-- Кнопка голосового звонка -->
         <button id="start-call-btn" class="call-action-btn" title="Голосовой звонок">📞</button>
       </div>
 
+      <!-- Плашка закрепленного сообщения -->
+      <div id="pinned-bar" class="pinned-bar hidden">
+        <div class="pinned-info">
+          <span class="pinned-label" id="pinned-type-label">ЗАКРЕП:</span>
+          <span class="pinned-text" id="pinned-text-preview">---</span>
+        </div>
+        <button id="unpin-btn" class="unpin-action-btn" title="Открепить сообщение">✕</button>
+      </div>
+
+      <!-- Баннер антиспама (Запрос на переписку) -->
+      <div id="antispam-request-banner" class="antispam-banner hidden">
+        <div class="antispam-text">Новый контакт отправил запрос на переписку.</div>
+        <div class="antispam-actions">
+          <button id="accept-chat-btn" class="antispam-btn-accept">ПРИНЯТЬ</button>
+          <button id="reject-chat-btn" class="antispam-btn-reject">ОТКЛОНИТЬ</button>
+        </div>
+      </div>
+
       <div class="messages-viewport" id="messages-container"></div>
       
+      <!-- Панель статуса редактирования сообщения -->
+      <div id="edit-state-bar" class="edit-state-bar hidden">
+        <span class="edit-state-label">Редактирование сообщения...</span>
+        <button type="button" id="cancel-edit-btn" class="cancel-edit-btn">ОТМЕНА</button>
+      </div>
+
       <!-- Форма отправки сообщений и картинок -->
       <form class="message-form" id="message-form">
         <input type="file" id="image-file-input" accept="image/*" class="hidden" />
         <button type="button" id="attach-btn" title="Прикрепить скриншот/фото">📎</button>
         <input type="text" id="message-input" autocomplete="off" placeholder="Сообщение или вставьте скриншот (Ctrl+V)..." />
-        <button type="submit">ОТПРАВИТЬ</button>
+        <button type="submit" id="send-msg-btn">ОТПРАВИТЬ</button>
       </form>
     </main>
+  </div>
+
+  <!-- КОНТЕКСТНОЕ МЕНЮ СООБЩЕНИЯ -->
+  <div id="msg-context-menu" class="context-menu hidden">
+    <!-- Блок реакций -->
+    <div class="context-reactions-row">
+      <span class="reaction-emoji-btn" data-emoji="👍">👍</span>
+      <span class="reaction-emoji-btn" data-emoji="👎">👎</span>
+      <span class="reaction-emoji-btn" data-emoji="❤️">❤️</span>
+      <span class="reaction-emoji-btn" data-emoji="🔥">🔥</span>
+      <span class="reaction-emoji-btn" data-emoji="😂">😂</span>
+      <span class="reaction-emoji-btn" data-emoji="💩">💩</span>
+      <span class="reaction-emoji-btn" data-emoji="🎉">🎉</span>
+      <span class="reaction-emoji-btn" data-emoji="👀">👀</span>
+    </div>
+    <div class="context-menu-divider"></div>
+    <button type="button" class="context-menu-item" id="ctx-edit-btn">Изменить</button>
+    <button type="button" class="context-menu-item" id="ctx-pin-both-btn">Закрепить для обоих</button>
+    <button type="button" class="context-menu-item" id="ctx-pin-self-btn">Закрепить для себя</button>
+    <div class="context-menu-divider"></div>
+    <button type="button" class="context-menu-item danger" id="ctx-delete-btn">Удалить у всех</button>
   </div>
 
   <!-- ОКНО ВХОДЯЩЕГО ВЫЗОВА -->
@@ -216,7 +278,7 @@
   <!-- МОДАЛКА ПАРОЛЯ АДМИНА -->
   <div id="admin-auth-modal" class="modal-overlay hidden">
     <div class="modal-window">
-      <input type="password" id="admin-pass-input" placeholder="v" autocomplete="off" />
+      <input type="password" id="admin-pass-input" placeholder="Пароль" autocomplete="off" />
     </div>
   </div>
 

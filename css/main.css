@@ -216,7 +216,7 @@ html, body {
 }
 
 .sidebar {
-  width: 290px;
+  width: 310px;
   background: var(--bg-panel);
   border-right: 1px solid var(--border-color);
   display: flex;
@@ -253,6 +253,12 @@ html, body {
 .user-fixed-cid {
   font-size: 11px;
   color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.user-fixed-cid:hover {
+  color: var(--accent-color);
 }
 
 #edit-name-btn {
@@ -270,6 +276,83 @@ html, body {
   color: var(--text-bright);
 }
 
+/* Сайдбар: Поиск контактов */
+.sidebar-search-box {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-input);
+}
+
+.search-input-wrapper {
+  display: flex;
+  position: relative;
+  align-items: center;
+}
+
+#contact-search-input {
+  width: 100%;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  color: var(--text-bright);
+  padding: 7px 28px 7px 8px;
+  font-size: 12px;
+  outline: none;
+}
+
+#contact-search-input:focus {
+  border-color: var(--accent-color);
+}
+
+#search-clear-btn {
+  position: absolute;
+  right: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#search-clear-btn:hover {
+  color: var(--text-bright);
+}
+
+.search-filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.search-filter-label {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.search-filter-btn {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 10px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.search-filter-btn.active {
+  background: var(--bg-active);
+  color: var(--text-bright);
+  border-color: var(--accent-color);
+}
+
+.sidebar-section-title {
+  padding: 8px 12px 4px 12px;
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+}
+
 .peers-list {
   flex: 1;
   overflow-y: auto;
@@ -283,7 +366,7 @@ html, body {
   color: var(--text-main);
   border: none;
   border-bottom: 1px solid var(--border-color);
-  padding: 14px 12px;
+  padding: 12px 12px;
   text-align: left;
   cursor: pointer;
   font-size: 12px;
@@ -312,6 +395,12 @@ html, body {
 .peer-btn-cid {
   font-size: 10px;
   color: var(--text-muted);
+}
+
+.peer-btn-tag {
+  font-size: 9px;
+  color: #fbbf24;
+  margin-top: 2px;
 }
 
 .sidebar-bottom {
@@ -346,6 +435,7 @@ html, body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
   height: 100%;
   height: 100dvh;
+  position: relative;
 }
 
 .chat-topbar {
@@ -377,9 +467,14 @@ html, body {
   border-radius: 0;
 }
 
-.call-action-btn:hover {
+.call-action-btn:hover:not(:disabled) {
   background: var(--bg-hover);
   border-color: var(--accent-color);
+}
+
+.call-action-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .mobile-back-btn {
@@ -392,13 +487,96 @@ html, body {
   padding: 4px 8px;
 }
 
+/* Закрепленное сообщение */
+.pinned-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
+  padding: 6px 16px;
+  font-size: 11px;
+}
+
+.pinned-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.pinned-label {
+  color: #38bdf8;
+  font-weight: bold;
+}
+
+.pinned-text {
+  color: var(--text-main);
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.unpin-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.unpin-action-btn:hover {
+  color: #ef4444;
+}
+
+/* Баннер антиспама */
+.antispam-banner {
+  background: #1c1508;
+  border-bottom: 1px solid #78350f;
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.antispam-text {
+  color: #fef08a;
+  font-size: 12px;
+}
+
+.antispam-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.antispam-btn-accept {
+  background: #15803d;
+  color: #fff;
+  border: 1px solid #22c55e;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.antispam-btn-reject {
+  background: #7f1d1d;
+  color: #fff;
+  border: 1px solid #ef4444;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
 .messages-viewport {
   flex: 1;
   overflow-y: auto;
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   font-size: 13px;
   -webkit-overflow-scrolling: touch;
 }
@@ -433,6 +611,14 @@ html, body {
 .msg-row {
   line-height: 1.4;
   word-break: break-word;
+  position: relative;
+  padding: 4px 6px;
+  border-radius: 2px;
+  user-select: text;
+}
+
+.msg-row:hover {
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .msg-time {
@@ -449,6 +635,43 @@ html, body {
 
 .msg-text {
   color: var(--text-main);
+}
+
+.msg-edited-tag {
+  color: var(--text-muted);
+  font-size: 10px;
+  margin-left: 6px;
+  font-style: italic;
+}
+
+/* Реакции под сообщением */
+.msg-reactions-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  padding-left: 2px;
+}
+
+.reaction-badge {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  padding: 1px 6px;
+  font-size: 11px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+
+.reaction-badge.my-active {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.reaction-badge:hover {
+  background: var(--bg-hover);
 }
 
 /* Превью картинок */
@@ -471,6 +694,29 @@ html, body {
 .msg-image:hover {
   opacity: 0.85;
   transform: scale(1.02);
+}
+
+/* Режим редактирования */
+.edit-state-bar {
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-color);
+  padding: 6px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+
+.edit-state-label {
+  color: #38bdf8;
+}
+
+.cancel-edit-btn {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 11px;
 }
 
 /* Форма отправки сообщения */
@@ -496,9 +742,14 @@ html, body {
   justify-content: center;
 }
 
-#attach-btn:hover {
+#attach-btn:hover:not(:disabled) {
   background: var(--bg-hover);
   color: var(--text-bright);
+}
+
+#attach-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .message-form input[type="text"] {
@@ -516,6 +767,12 @@ html, body {
   border-color: var(--accent-color);
 }
 
+.message-form input[type="text"]:disabled {
+  background: #111;
+  color: #555;
+  cursor: not-allowed;
+}
+
 .message-form button[type="submit"] {
   background: var(--bg-hover);
   color: var(--text-bright);
@@ -525,8 +782,75 @@ html, body {
   border-radius: 0;
 }
 
-.message-form button[type="submit"]:hover {
+.message-form button[type="submit"]:hover:not(:disabled) {
   background: var(--bg-active);
+}
+
+.message-form button[type="submit"]:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ==================== КОНТЕКСТНОЕ МЕНЮ ==================== */
+.context-menu {
+  position: fixed;
+  z-index: 2000;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 190px;
+}
+
+.context-reactions-row {
+  display: flex;
+  gap: 6px;
+  padding: 4px 6px;
+  overflow-x: auto;
+  justify-content: space-between;
+}
+
+.reaction-emoji-btn {
+  font-size: 18px;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.reaction-emoji-btn:hover {
+  transform: scale(1.3);
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 3px 0;
+}
+
+.context-menu-item {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.context-menu-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-bright);
+}
+
+.context-menu-item.danger {
+  color: #ef4444;
+}
+
+.context-menu-item.danger:hover {
+  background: #450a0a;
 }
 
 /* ==================== ЗВОНКИ (WebRTC UI) ==================== */
