@@ -13,11 +13,11 @@ const db = firebase.database();
 
 const ADMIN_PASS = 'ir87O9fjm_jrg';
 const DELETE_CONFIRM_PHRASE = 'да я хочу этого';
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 МБ максимум для базы
 
 const cidsRef = db.ref('allowed_cids');
 const usersRef = db.ref('users');
 const messagesRef = db.ref('messages');
+const callsRef = db.ref('calls');
 
 let cloudCids = [];
 let cloudCidsKeys = {};
@@ -58,14 +58,6 @@ function formatDateSeparator(isoString) {
     options.year = 'numeric';
   }
   return date.toLocaleDateString('ru-RU', options).toUpperCase();
-}
-
-function formatBytes(bytes) {
-  if (!bytes || bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
 // ==================== REALTIME СЛУШАТЕЛИ ====================
@@ -138,7 +130,8 @@ const messagesContainer = document.getElementById('messages-container');
 const messageForm = document.getElementById('message-form');
 const messageInput = document.getElementById('message-input');
 const attachBtn = document.getElementById('attach-btn');
-const generalFileInput = document.getElementById('general-file-input');
+const imageFileInput = document.getElementById('image-file-input');
+const startCallBtn = document.getElementById('start-call-btn');
 
 // Просмотрщик картинок
 const imageViewerModal = document.getElementById('image-viewer-modal');
@@ -174,6 +167,326 @@ const deletePhraseInput = document.getElementById('delete-phrase-input');
 const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
 const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
 let cidPendingDelete = null;
+
+// ==================== WebRTC АУДИОЗВОНКИ ====================
+
+const remoteAudio = document.getElementById('remote-audio');
+const incomingCallModal = document.getElementById('incoming-call-modal');
+const incomingCallerName = document.getElementById('incoming-caller-name');
+const acceptCallBtn = document.getElementById('accept-call-btn');
+const rejectCallBtn = document.getElementById('reject-call-btn');
+
+const activeCallModal = document.getElementById('active-call-modal');
+const callStatusLabel = document.getElementById('call-status-label');
+const activeCallPeerName = document.getElementById('active-call-peer-name');
+const callTimerLabel = document.getElementById('call-timer-label');
+const toggleMuteBtn = document.getElementById('toggle-mute-btn');
+const endCallBtn = document.getElementById('end-call-btn');
+
+let peerConnection = null;
+let localStream = null;
+let activeCallTargetCID = null;
+let isCallInitiator = false;
+let callTimerInterval = null;
+let callDurationSeconds = 0;
+let isMuted = false;
+
+// Звуковой синтезатор гудков (Web Audio API)
+let audioCtx = null;
+let ringOscillator = null;
+let ringInterval = null;
+
+function playRingTone(type = 'dialing') {
+  stopRingTone();
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    ringInterval = setInterval(() => {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(type === 'dialing' ? 425 : 480, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (type === 'dialing' ? 1.0 : 0.6));
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + (type === 'dialing' ? 1.0 : 0.6));
+    }, type === 'dialing' ? 3000 : 1600);
+  } catch (e) {
+    console.warn('Audio tone err:', e);
+  }
+}
+
+function stopRingTone() {
+  if (ringInterval) {
+    clearInterval(ringInterval);
+    ringInterval = null;
+  }
+  if (audioCtx) {
+    try { audioCtx.close(); } catch(e){}
+    audioCtx = null;
+  }
+}
+
+const rtcConfig = {
+  iceServers: [
+    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
+  ]
+};
+
+// Слушаем входящие вызовы, адресованные текущему пользователю
+function initCallSignalingListener() {
+  if (!currentAuthCID) return;
+
+  callsRef.child(currentAuthCID).on('value', async (snapshot) => {
+    const callData = snapshot.val();
+    if (!callData) {
+      // Если узел удалили — звонок сброшен собеседником
+      if (activeCallTargetCID && !isCallInitiator) {
+        cleanupCall();
+      }
+      return;
+    }
+
+    // Если входящий вызов в статусе 'ringing'
+    if (callData.status === 'ringing') {
+      activeCallTargetCID = callData.callerCID;
+      incomingCallerName.textContent = `${callData.callerName || callData.callerCID} (${callData.callerCID})`;
+      incomingCallModal.classList.remove('hidden');
+      playRingTone('incoming');
+    } else if (callData.status === 'ended') {
+      cleanupCall();
+    }
+  });
+}
+
+// Запуск исходящего вызова
+startCallBtn.addEventListener('click', async () => {
+  if (!activePeerCID || !currentAuthCID) return;
+  if (activePeerCID === currentAuthCID) return;
+
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch (err) {
+    alert('Не удалось получить доступ к микрофону!');
+    return;
+  }
+
+  isCallInitiator = true;
+  activeCallTargetCID = activePeerCID;
+
+  const targetName = cloudUsers[activePeerCID]?.name || activePeerCID;
+  activeCallPeerName.textContent = `${targetName} (${activePeerCID})`;
+  callStatusLabel.textContent = 'ВЫЗОВ...';
+  callTimerLabel.textContent = '00:00';
+  activeCallModal.classList.remove('hidden');
+  playRingTone('dialing');
+
+  peerConnection = new RTCPeerConnection(rtcConfig);
+
+  localStream.getTracks().forEach(track => {
+    peerConnection.addTrack(track, localStream);
+  });
+
+  peerConnection.ontrack = (event) => {
+    remoteAudio.srcObject = event.streams[0];
+  };
+
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      callsRef.child(activeCallTargetCID).child('callerCandidates').push(JSON.stringify(event.candidate));
+    }
+  };
+
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+
+  const myName = cloudUsers[currentAuthCID]?.name || currentAuthCID;
+
+  // Записываем offer в узел вызываемого абонента
+  await callsRef.child(activeCallTargetCID).set({
+    callerCID: currentAuthCID,
+    callerName: myName,
+    offer: JSON.stringify(offer),
+    status: 'ringing'
+  });
+
+  // Инициатор слушает ответ собеседника
+  const myCallRef = callsRef.child(activeCallTargetCID);
+  myCallRef.on('value', async (snap) => {
+    const data = snap.val();
+    if (!data) {
+      cleanupCall();
+      return;
+    }
+
+    if (data.status === 'connected' && data.answer && peerConnection.signalingState === 'have-local-offer') {
+      stopRingTone();
+      const answer = JSON.parse(data.answer);
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+      startCallTimer();
+    } else if (data.status === 'rejected' || data.status === 'ended') {
+      cleanupCall();
+    }
+  });
+
+  // Слушаем ICE-кандидаты от собеседника
+  myCallRef.child('calleeCandidates').on('child_added', async (cSnap) => {
+    const candidateData = cSnap.val();
+    if (candidateData && peerConnection) {
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(JSON.parse(candidateData)));
+      } catch (e) {}
+    }
+  });
+});
+
+// Принять входящий вызов
+acceptCallBtn.addEventListener('click', async () => {
+  stopRingTone();
+  incomingCallModal.classList.add('hidden');
+
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch (err) {
+    alert('Не удалось получить доступ к микрофону!');
+    rejectIncomingCall();
+    return;
+  }
+
+  const callSnap = await callsRef.child(currentAuthCID).once('value');
+  const callData = callSnap.val();
+  if (!callData || !callData.offer) {
+    cleanupCall();
+    return;
+  }
+
+  isCallInitiator = false;
+  activeCallTargetCID = callData.callerCID;
+
+  const targetName = cloudUsers[activeCallTargetCID]?.name || activeCallTargetCID;
+  activeCallPeerName.textContent = `${targetName} (${activeCallTargetCID})`;
+  callStatusLabel.textContent = 'СОЕДИНЕНИЕ...';
+  activeCallModal.classList.remove('hidden');
+
+  peerConnection = new RTCPeerConnection(rtcConfig);
+
+  localStream.getTracks().forEach(track => {
+    peerConnection.addTrack(track, localStream);
+  });
+
+  peerConnection.ontrack = (event) => {
+    remoteAudio.srcObject = event.streams[0];
+  };
+
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      callsRef.child(currentAuthCID).child('calleeCandidates').push(JSON.stringify(event.candidate));
+    }
+  };
+
+  const offer = JSON.parse(callData.offer);
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+
+  await callsRef.child(currentAuthCID).update({
+    answer: JSON.stringify(answer),
+    status: 'connected'
+  });
+
+  startCallTimer();
+
+  // Слушаем ICE-кандидаты инициатора
+  callsRef.child(currentAuthCID).child('callerCandidates').on('child_added', async (cSnap) => {
+    const candidateData = cSnap.val();
+    if (candidateData && peerConnection) {
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(JSON.parse(candidateData)));
+      } catch (e) {}
+    }
+  });
+});
+
+// Отклонить входящий звонок
+rejectCallBtn.addEventListener('click', () => {
+  rejectIncomingCall();
+});
+
+async function rejectIncomingCall() {
+  stopRingTone();
+  incomingCallModal.classList.add('hidden');
+  if (currentAuthCID) {
+    await callsRef.child(currentAuthCID).update({ status: 'rejected' });
+    setTimeout(() => callsRef.child(currentAuthCID).remove(), 1000);
+  }
+  cleanupCall();
+}
+
+// Завершить активный разговор
+endCallBtn.addEventListener('click', async () => {
+  if (activeCallTargetCID) {
+    const targetNode = isCallInitiator ? activeCallTargetCID : currentAuthCID;
+    await callsRef.child(targetNode).update({ status: 'ended' });
+    setTimeout(() => callsRef.child(targetNode).remove(), 500);
+  }
+  cleanupCall();
+});
+
+function cleanupCall() {
+  stopRingTone();
+  stopCallTimer();
+
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+  }
+
+  remoteAudio.srcObject = null;
+  activeCallModal.classList.add('hidden');
+  incomingCallModal.classList.add('hidden');
+  activeCallTargetCID = null;
+  isCallInitiator = false;
+  isMuted = false;
+  toggleMuteBtn.textContent = 'МИКРОФОН: ВКЛ';
+}
+
+function startCallTimer() {
+  stopCallTimer();
+  callStatusLabel.textContent = 'РАЗГОВОР';
+  callDurationSeconds = 0;
+  callTimerInterval = setInterval(() => {
+    callDurationSeconds++;
+    const mins = String(Math.floor(callDurationSeconds / 60)).padStart(2, '0');
+    const secs = String(callDurationSeconds % 60).padStart(2, '0');
+    callTimerLabel.textContent = `${mins}:${secs}`;
+  }, 1000);
+}
+
+function stopCallTimer() {
+  if (callTimerInterval) {
+    clearInterval(callTimerInterval);
+    callTimerInterval = null;
+  }
+  callDurationSeconds = 0;
+}
+
+// Заглушить микрофон (Mute)
+toggleMuteBtn.addEventListener('click', () => {
+  if (!localStream) return;
+  isMuted = !isMuted;
+  localStream.getAudioTracks().forEach(track => {
+    track.enabled = !isMuted;
+  });
+  toggleMuteBtn.textContent = isMuted ? 'МИКРОФОН: ВЫКЛ' : 'МИКРОФОН: ВКЛ';
+});
 
 // ==================== ВСТРОЕННЫЙ РЕДАКТОР ИЗОБРАЖЕНИЙ ====================
 
@@ -338,14 +651,14 @@ editorCancelBtn.addEventListener('click', () => {
 
 editorQuickSendBtn.addEventListener('click', () => {
   if (rawOriginalImageBase64) {
-    sendMessage('', rawOriginalImageBase64, null);
+    sendMessage('', rawOriginalImageBase64);
   }
   imageEditorModal.classList.add('hidden');
 });
 
 editorSendBtn.addEventListener('click', () => {
   const resultWebP = editorCanvas.toDataURL('image/webp', 0.8);
-  sendMessage('', resultWebP, null);
+  sendMessage('', resultWebP);
   imageEditorModal.classList.add('hidden');
   rawOriginalImageBase64 = null;
 });
@@ -480,50 +793,25 @@ editorFinishCropBtn.addEventListener('click', () => {
   setEditorTool('brush');
 });
 
-// ==================== ОБРАБОТКА ВХОДЯЩИХ ФАЙЛОВ И КАРТИНОК ====================
+// ==================== СКРЕПКА И ВСТАВКА ФОТО ====================
 
-// Скрепка
-attachBtn.addEventListener('click', () => generalFileInput.click());
+function processInputImage(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    openEditorWithImage(e.target.result);
+  };
+  reader.readAsDataURL(file);
+}
 
-generalFileInput.addEventListener('change', (e) => {
+attachBtn.addEventListener('click', () => imageFileInput.click());
+
+imageFileInput.addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
-
-  if (file.size > MAX_FILE_SIZE_BYTES) {
-    alert(`Файл слишком большой! Лимит — 10 МБ (ваш файл: ${formatBytes(file.size)})`);
-    generalFileInput.value = '';
-    return;
-  }
-
-  // Если это картинка — открываем в редакторе
-  if (file.type.startsWith('image/')) {
-    const reader = new FileReader();
-    reader.onload = (ev) => openEditorWithImage(ev.target.result);
-    reader.readAsDataURL(file);
-  } else {
-    // Если это текстовый файл, скрипт (.py, .js, .cpp, .bin, .pdf и т.д.)
-    attachBtn.textContent = '⏳';
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const fileData = {
-        name: file.name,
-        size: file.size,
-        data: ev.target.result
-      };
-      sendMessage('', null, fileData);
-      attachBtn.textContent = '📎';
-    };
-    reader.onerror = () => {
-      alert('Ошибка при чтении файла');
-      attachBtn.textContent = '📎';
-    };
-    reader.readAsDataURL(file);
-  }
-
-  generalFileInput.value = '';
+  processInputImage(file);
+  imageFileInput.value = '';
 });
 
-// Вставка скриншота из буфера обмена (Ctrl + V)
 window.addEventListener('paste', (e) => {
   if (!currentAuthCID || !activePeerCID) return;
 
@@ -533,9 +821,7 @@ window.addEventListener('paste', (e) => {
       e.preventDefault();
       const file = item.getAsFile();
       if (!file) continue;
-      const reader = new FileReader();
-      reader.onload = (ev) => openEditorWithImage(ev.target.result);
-      reader.readAsDataURL(file);
+      processInputImage(file);
       break;
     }
   }
@@ -633,6 +919,7 @@ settingsLogoutBtn.addEventListener('click', () => {
 function performLogout() {
   localStorage.removeItem('coum_active_cid');
   localStorage.removeItem('coum_last_peer');
+  cleanupCall();
   currentAuthCID = null;
   activePeerCID = null;
   appScreen.classList.remove('chat-opened');
@@ -823,6 +1110,7 @@ function enterApp() {
   appScreen.classList.remove('hidden');
 
   renderProfile();
+  initCallSignalingListener();
 
   const peers = cloudCids.filter(c => c !== currentAuthCID);
   if (!activePeerCID || !peers.includes(activePeerCID)) {
@@ -934,21 +1222,6 @@ function renderMessages() {
       `;
     }
 
-    // Рендер файла кода или документа
-    if (msg.file) {
-      contentHTML += `
-        <div>
-          <a class="msg-file-card" href="${msg.file.data}" download="${escapeHTML(msg.file.name)}">
-            <span class="file-icon">[FILE]</span>
-            <div class="file-details">
-              <span class="file-name">${escapeHTML(msg.file.name)}</span>
-              <span class="file-size">${formatBytes(msg.file.size)} (скачать)</span>
-            </div>
-          </a>
-        </div>
-      `;
-    }
-
     row.innerHTML = `
       <span class="msg-time">[${timeFormatted}]</span>
       <span class="msg-author">${escapeHTML(authorName)}:</span>
@@ -968,9 +1241,9 @@ function renderMessages() {
 
 // ==================== ОТПРАВКА СООБЩЕНИЙ ====================
 
-function sendMessage(text = '', imageBase64 = null, fileObject = null) {
+function sendMessage(text = '', imageBase64 = null) {
   if (!activePeerCID || !currentAuthCID) return;
-  if (!text && !imageBase64 && !fileObject) return;
+  if (!text && !imageBase64) return;
 
   const chatKey = getChatKey(currentAuthCID, activePeerCID);
 
@@ -984,10 +1257,6 @@ function sendMessage(text = '', imageBase64 = null, fileObject = null) {
     newMsg.image = imageBase64;
   }
 
-  if (fileObject) {
-    newMsg.file = fileObject;
-  }
-
   messagesRef.child(chatKey).push(newMsg);
 }
 
@@ -995,11 +1264,11 @@ messageForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const text = messageInput.value.trim();
   if (!text) return;
-  sendMessage(text, null, null);
+  sendMessage(text, null);
   messageInput.value = '';
 });
 
-// Просмотрщик картинок на весь экран
+// Просмотрщик картинок
 function openImageViewer(src) {
   viewerImg.src = src;
   imageViewerModal.classList.remove('hidden');

@@ -14,6 +14,9 @@
 </head>
 <body>
 
+  <!-- АУДИО ТЕЛЕФОННОГО ПОТОКА -->
+  <audio id="remote-audio" autoplay playsinline></audio>
+
   <!-- ЭКРАН АВТОРИЗАЦИИ ПО CID -->
   <div id="auth-screen" class="screen">
     <div class="auth-box">
@@ -47,19 +50,49 @@
     <!-- Область чата -->
     <main class="chat-area" id="app-chat-area">
       <div class="chat-topbar">
-        <button id="mobile-back-btn" class="mobile-back-btn">←</button>
-        <span id="active-peer-header">---</span>
+        <div class="chat-topbar-left">
+          <button id="mobile-back-btn" class="mobile-back-btn">←</button>
+          <span id="active-peer-header">---</span>
+        </div>
+        <!-- Кнопка голосового звонка -->
+        <button id="start-call-btn" class="call-action-btn" title="Голосовой звонок">📞</button>
       </div>
+
       <div class="messages-viewport" id="messages-container"></div>
       
-      <!-- Форма отправки с кнопкой скрепки -->
+      <!-- Форма отправки сообщений и картинок -->
       <form class="message-form" id="message-form">
-        <input type="file" id="general-file-input" class="hidden" />
-        <button type="button" id="attach-btn" title="Прикрепить фото или файл">📎</button>
+        <input type="file" id="image-file-input" accept="image/*" class="hidden" />
+        <button type="button" id="attach-btn" title="Прикрепить скриншот/фото">📎</button>
         <input type="text" id="message-input" autocomplete="off" placeholder="Сообщение или вставьте скриншот (Ctrl+V)..." />
         <button type="submit">ОТПРАВИТЬ</button>
       </form>
     </main>
+  </div>
+
+  <!-- ОКНО ВХОДЯЩЕГО ВЫЗОВА -->
+  <div id="incoming-call-modal" class="modal-overlay hidden">
+    <div class="call-window incoming-window">
+      <div class="call-title">ВХОДЯЩИЙ ЗВОНОК</div>
+      <div class="call-peer-info" id="incoming-caller-name">Пользователь</div>
+      <div class="call-actions">
+        <button id="accept-call-btn" class="call-btn-accept">ОТВЕТИТЬ</button>
+        <button id="reject-call-btn" class="call-btn-reject">СБРОС</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ОКНО АКТИВНОГО / ИСХОДЯЩЕГО ЗВОНКА -->
+  <div id="active-call-modal" class="modal-overlay hidden">
+    <div class="call-window">
+      <div class="call-status" id="call-status-label">ВЫЗОВ...</div>
+      <div class="call-peer-info" id="active-call-peer-name">---</div>
+      <div class="call-timer" id="call-timer-label">00:00</div>
+      <div class="call-actions">
+        <button id="toggle-mute-btn" class="call-btn-mute">МИКРОФОН: ВКЛ</button>
+        <button id="end-call-btn" class="call-btn-reject">ЗАВЕРШИТЬ</button>
+      </div>
+    </div>
   </div>
 
   <!-- ВСТРОЕННЫЙ РЕДАКТОР ИЗОБРАЖЕНИЙ -->

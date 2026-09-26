@@ -1,4 +1,4 @@
-/* Переменные стилей по умолчанию (Черная OLED) */
+/* Базовые переменные (Черная OLED) */
 :root {
   --bg-main: #000000;
   --bg-panel: #080808;
@@ -354,10 +354,32 @@ html, body {
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
+  justify-content: space-between;
   font-size: 13px;
   color: var(--text-bright);
-  gap: 12px;
   flex-shrink: 0;
+}
+
+.chat-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.call-action-btn {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-bright);
+  font-size: 15px;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.call-action-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-color);
 }
 
 .mobile-back-btn {
@@ -427,57 +449,6 @@ html, body {
 
 .msg-text {
   color: var(--text-main);
-}
-
-/* Карточки файлов */
-.msg-file-card {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-color);
-  padding: 8px 12px;
-  margin-top: 6px;
-  text-decoration: none;
-  color: var(--text-bright);
-  cursor: pointer;
-  border-radius: 2px;
-  max-width: 320px;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.msg-file-card:hover {
-  background: var(--bg-hover);
-  border-color: var(--accent-color);
-}
-
-.file-icon {
-  font-size: 11px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-color);
-  padding: 3px 6px;
-  color: var(--accent-color);
-  font-weight: bold;
-}
-
-.file-details {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.file-name {
-  font-size: 12px;
-  font-weight: bold;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--text-bright);
-}
-
-.file-size {
-  font-size: 10px;
-  color: var(--text-muted);
 }
 
 /* Превью картинок */
@@ -556,6 +527,76 @@ html, body {
 
 .message-form button[type="submit"]:hover {
   background: var(--bg-active);
+}
+
+/* ==================== ЗВОНКИ (WebRTC UI) ==================== */
+.call-window {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  width: 90%;
+  max-width: 360px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+}
+
+.call-title {
+  font-size: 12px;
+  color: var(--accent-color);
+  letter-spacing: 2px;
+}
+
+.call-status {
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+}
+
+.call-peer-info {
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--text-bright);
+}
+
+.call-timer {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--text-bright);
+  letter-spacing: 2px;
+}
+
+.call-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.call-actions button {
+  flex: 1;
+  padding: 10px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+}
+
+.call-btn-accept {
+  background: #15803d;
+  color: #fff;
+  border-color: #22c55e;
+}
+
+.call-btn-reject {
+  background: #7f1d1d;
+  color: #fff;
+  border-color: #ef4444;
+}
+
+.call-btn-mute {
+  background: var(--bg-input);
+  color: var(--text-bright);
 }
 
 /* Редактор изображений */
