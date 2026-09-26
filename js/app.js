@@ -111,42 +111,7 @@ function escapeHTML(str) {
   }[tag] || tag));
 }
 
-// ==================== СЖАТИЕ КАРТИНОК НА ЛЕТУ ====================
-
-function compressImageFile(file, maxWidth = 1200, quality = 0.75) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Сжимаем в легкий WebP (или JPEG если браузер старый)
-        const compressedBase64 = canvas.toDataURL('image/webp', quality);
-        resolve(compressedBase64);
-      };
-      img.onerror = reject;
-      img.src = e.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-// ==================== DOM ====================
+// ==================== DOM ССЫЛКИ ====================
 
 const authScreen = document.getElementById('auth-screen');
 const authLogo = document.getElementById('auth-logo');
@@ -200,6 +165,362 @@ const deletePhraseInput = document.getElementById('delete-phrase-input');
 const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
 const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
 let cidPendingDelete = null;
+
+// ==================== ВСТРОЕННЫЙ РЕДАКТОР ИЗОБРАЖЕНИЙ ====================
+
+const imageEditorModal = document.getElementById('image-editor-modal');
+const editorCanvas = document.getElementById('editor-canvas');
+const editorCtx = editorCanvas.getContext('2d');
+const editorCanvasContainer = document.getElementById('editor-canvas-container');
+const cropSelectionBox = document.getElementById('crop-selection-box');
+
+const toolBrushBtn = document.getElementById('tool-brush');
+const toolHighlighterBtn = document.getElementById('tool-highlighter');
+const toolEraserBtn = document.getElementById('tool-eraser');
+const toolTextBtn = document.getElementById('tool-text');
+const toolCropBtn = document.getElementById('tool-crop');
+
+const editorUndoBtn = document.getElementById('editor-undo-btn');
+const editorCancelBtn = document.getElementById('editor-cancel-btn');
+const brushSizeInput = document.getElementById('brush-size-input');
+const paletteDots = document.querySelectorAll('.palette-dot');
+const editorColorPicker = document.getElementById('editor-color-picker');
+
+const editorQuickSendBtn = document.getElementById('editor-quick-send-btn');
+const editorFinishCropBtn = document.getElementById('editor-finish-crop-btn');
+const editorSendBtn = document.getElementById('editor-send-btn');
+
+let rawOriginalImageBase64 = null;
+let currentTool = 'brush'; // 'brush', 'highlighter', 'eraser', 'text', 'crop'
+let currentColor = '#ffffff';
+let brushSize = 6;
+let undoStack = [];
+const MAX_UNDO = 15;
+
+let isDrawing = false;
+let lastX = 0;
+let lastY = 0;
+
+// Кадрирование
+let isCropping = false;
+let cropStartX = 0;
+let cropStartY = 0;
+let cropEndX = 0;
+let cropEndY = 0;
+
+function pushUndoState() {
+  if (undoStack.length >= MAX_UNDO) undoStack.shift();
+  undoStack.push(editorCanvas.toDataURL('image/png'));
+}
+
+function openEditorWithImage(srcBase64) {
+  rawOriginalImageBase64 = srcBase64;
+  undoStack = [];
+  setEditorTool('brush');
+  cropSelectionBox.classList.add('hidden');
+  editorFinishCropBtn.classList.add('hidden');
+
+  const img = new Image();
+  img.onload = () => {
+    // Ограничиваем максимальное рабочее разрешение для быстродействия
+    let w = img.width;
+    let h = img.height;
+    const maxDimension = 1400;
+
+    if (w > maxDimension || h > maxDimension) {
+      if (w > h) {
+        h = Math.round((h * maxDimension) / w);
+        w = maxDimension;
+      } else {
+        w = Math.round((w * maxDimension) / h);
+        h = maxDimension;
+      }
+    }
+
+    editorCanvas.width = w;
+    editorCanvas.height = h;
+    editorCtx.clearRect(0, 0, w, h);
+    editorCtx.drawImage(img, 0, 0, w, h);
+    pushUndoState();
+
+    imageEditorModal.classList.remove('hidden');
+  };
+  img.src = srcBase64;
+}
+
+function setEditorTool(tool) {
+  currentTool = tool;
+  [toolBrushBtn, toolHighlighterBtn, toolEraserBtn, toolTextBtn, toolCropBtn].forEach(b => b.classList.remove('active'));
+
+  if (tool === 'brush') toolBrushBtn.classList.add('active');
+  if (tool === 'highlighter') toolHighlighterBtn.classList.add('active');
+  if (tool === 'eraser') toolEraserBtn.classList.add('active');
+  if (tool === 'text') toolTextBtn.classList.add('active');
+  if (tool === 'crop') toolCropBtn.classList.add('active');
+
+  if (tool === 'crop') {
+    editorFinishCropBtn.classList.remove('hidden');
+    cropSelectionBox.classList.remove('hidden');
+  } else {
+    editorFinishCropBtn.classList.add('hidden');
+    cropSelectionBox.classList.add('hidden');
+  }
+}
+
+toolBrushBtn.onclick = () => setEditorTool('brush');
+toolHighlighterBtn.onclick = () => setEditorTool('highlighter');
+toolEraserBtn.onclick = () => setEditorTool('eraser');
+toolCropBtn.onclick = () => setEditorTool('crop');
+
+// Добавление надписи
+toolTextBtn.onclick = () => {
+  setEditorTool('text');
+  const userText = prompt('Введите надпись на фото:');
+  if (!userText || !userText.trim()) return;
+
+  pushUndoState();
+  const fontSize = Math.max(18, Math.round(editorCanvas.width / 22));
+  editorCtx.font = `bold ${fontSize}px monospace`;
+  editorCtx.fillStyle = currentColor;
+  editorCtx.shadowColor = 'rgba(0,0,0,0.8)';
+  editorCtx.shadowBlur = 6;
+  
+  // Рисуем по центру снизу
+  const x = editorCanvas.width / 2;
+  const y = editorCanvas.height - 40;
+  editorCtx.textAlign = 'center';
+  editorCtx.fillText(userText.trim(), x, y);
+  editorCtx.shadowBlur = 0;
+};
+
+// Палитра
+paletteDots.forEach(dot => {
+  dot.addEventListener('click', () => {
+    paletteDots.forEach(d => d.classList.remove('active'));
+    dot.classList.add('active');
+    currentColor = dot.dataset.color;
+    editorColorPicker.value = currentColor;
+    if (currentTool === 'eraser') setEditorTool('brush');
+  });
+});
+
+editorColorPicker.addEventListener('input', (e) => {
+  currentColor = e.target.value;
+  paletteDots.forEach(d => d.classList.remove('active'));
+  if (currentTool === 'eraser') setEditorTool('brush');
+});
+
+brushSizeInput.addEventListener('input', (e) => {
+  brushSize = parseInt(e.target.value, 10);
+});
+
+// Отмена шага
+editorUndoBtn.addEventListener('click', () => {
+  if (undoStack.length <= 1) return;
+  undoStack.pop(); // Текущее состояние
+  const prevState = undoStack[undoStack.length - 1];
+  const img = new Image();
+  img.onload = () => {
+    editorCanvas.width = img.width;
+    editorCanvas.height = img.height;
+    editorCtx.clearRect(0, 0, img.width, img.height);
+    editorCtx.drawImage(img, 0, 0);
+  };
+  img.src = prevState;
+});
+
+editorCancelBtn.addEventListener('click', () => {
+  imageEditorModal.classList.add('hidden');
+  rawOriginalImageBase64 = null;
+});
+
+// Быстрая отправка без изменений
+editorQuickSendBtn.addEventListener('click', () => {
+  if (rawOriginalImageBase64) {
+    sendMessage('', rawOriginalImageBase64);
+  }
+  imageEditorModal.classList.add('hidden');
+});
+
+// Отправка отредактированного изображения (сжатие в легкий webp)
+editorSendBtn.addEventListener('click', () => {
+  const resultWebP = editorCanvas.toDataURL('image/webp', 0.8);
+  sendMessage('', resultWebP);
+  imageEditorModal.classList.add('hidden');
+  rawOriginalImageBase64 = null;
+});
+
+// Координаты холста с учетом CSS масштабирования
+function getCanvasCoords(e) {
+  const rect = editorCanvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  
+  const scaleX = editorCanvas.width / rect.width;
+  const scaleY = editorCanvas.height / rect.height;
+
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY,
+    rawClientX: clientX,
+    rawClientY: clientY
+  };
+}
+
+// Рисование и кадрирование на холсте
+function startDraw(e) {
+  const coords = getCanvasCoords(e);
+
+  if (currentTool === 'crop') {
+    isCropping = true;
+    cropStartX = coords.x;
+    cropStartY = coords.y;
+    cropEndX = coords.x;
+    cropEndY = coords.y;
+    updateCropBox();
+    return;
+  }
+
+  isDrawing = true;
+  lastX = coords.x;
+  lastY = coords.y;
+  pushUndoState();
+}
+
+function moveDraw(e) {
+  if (isCropping && currentTool === 'crop') {
+    const coords = getCanvasCoords(e);
+    cropEndX = coords.x;
+    cropEndY = coords.y;
+    updateCropBox();
+    return;
+  }
+
+  if (!isDrawing) return;
+  e.preventDefault();
+
+  const coords = getCanvasCoords(e);
+  editorCtx.save();
+  editorCtx.lineCap = 'round';
+  editorCtx.lineJoin = 'round';
+
+  if (currentTool === 'brush') {
+    editorCtx.globalAlpha = 1.0;
+    editorCtx.strokeStyle = currentColor;
+    editorCtx.lineWidth = brushSize;
+    editorCtx.beginPath();
+    editorCtx.moveTo(lastX, lastY);
+    editorCtx.lineTo(coords.x, coords.y);
+    editorCtx.stroke();
+  } else if (currentTool === 'highlighter') {
+    editorCtx.globalAlpha = 0.35;
+    editorCtx.strokeStyle = currentColor;
+    editorCtx.lineWidth = brushSize * 3;
+    editorCtx.beginPath();
+    editorCtx.moveTo(lastX, lastY);
+    editorCtx.lineTo(coords.x, coords.y);
+    editorCtx.stroke();
+  } else if (currentTool === 'eraser') {
+    // В режиме ластика рисуем исходными пикселями или стираем в темный фон
+    editorCtx.globalCompositeOperation = 'destination-out';
+    editorCtx.lineWidth = brushSize * 2;
+    editorCtx.beginPath();
+    editorCtx.moveTo(lastX, lastY);
+    editorCtx.lineTo(coords.x, coords.y);
+    editorCtx.stroke();
+  }
+
+  editorCtx.restore();
+  lastX = coords.x;
+  lastY = coords.y;
+}
+
+function stopDraw() {
+  isDrawing = false;
+  isCropping = false;
+}
+
+editorCanvas.addEventListener('mousedown', startDraw);
+window.addEventListener('mousemove', moveDraw);
+window.addEventListener('mouseup', stopDraw);
+
+editorCanvas.addEventListener('touchstart', startDraw, { passive: false });
+window.addEventListener('touchmove', moveDraw, { passive: false });
+window.addEventListener('touchend', stopDraw);
+
+// Логика кадрирования
+function updateCropBox() {
+  const rect = editorCanvas.getBoundingClientRect();
+  const scaleX = rect.width / editorCanvas.width;
+  const scaleY = rect.height / editorCanvas.height;
+
+  const left = Math.min(cropStartX, cropEndX) * scaleX + rect.left;
+  const top = Math.min(cropStartY, cropEndY) * scaleY + rect.top;
+  const width = Math.abs(cropEndX - cropStartX) * scaleX;
+  const height = Math.abs(cropEndY - cropStartY) * scaleY;
+
+  cropSelectionBox.style.left = `${left}px`;
+  cropSelectionBox.style.top = `${top}px`;
+  cropSelectionBox.style.width = `${width}px`;
+  cropSelectionBox.style.height = `${height}px`;
+}
+
+editorFinishCropBtn.addEventListener('click', () => {
+  const x = Math.min(cropStartX, cropEndX);
+  const y = Math.min(cropStartY, cropEndY);
+  const w = Math.abs(cropEndX - cropStartX);
+  const h = Math.abs(cropEndY - cropStartY);
+
+  if (w < 20 || h < 20) {
+    alert('Выделите область побольше для обрезки');
+    return;
+  }
+
+  pushUndoState();
+  const croppedData = editorCtx.getImageData(x, y, w, h);
+  editorCanvas.width = w;
+  editorCanvas.height = h;
+  editorCtx.putImageData(croppedData, 0, 0);
+
+  cropSelectionBox.classList.add('hidden');
+  setEditorTool('brush');
+});
+
+// ==================== СЖАТИЕ КАРТИНОК И ПЕРЕДАЧА В РЕДАКТОР ====================
+
+function processInputImage(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    openEditorWithImage(e.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+
+// Кнопка скрепки
+attachBtn.addEventListener('click', () => imageFileInput.click());
+
+imageFileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  processInputImage(file);
+  imageFileInput.value = '';
+});
+
+// Вставка скриншота из буфера обмена (Ctrl + V) -> сразу в редактор
+window.addEventListener('paste', (e) => {
+  if (!currentAuthCID || !activePeerCID) return;
+
+  const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+  for (let item of items) {
+    if (item.type.indexOf('image') !== -1) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (!file) continue;
+      processInputImage(file);
+      break;
+    }
+  }
+});
 
 // ==================== ТЕМЫ И МАСШТАБ ====================
 
@@ -600,7 +921,6 @@ function renderMessages() {
       ${contentHTML}
     `;
 
-    // Клик на превью открывает полный экран
     const imgEl = row.querySelector('.msg-image');
     if (imgEl) {
       imgEl.onclick = () => openImageViewer(msg.image);
@@ -612,7 +932,7 @@ function renderMessages() {
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// ==================== ОТПРАВКА СООБЩЕНИЙ И КАРТИНОК ====================
+// ==================== ОТПРАВКА СООБЩЕНИЙ ====================
 
 function sendMessage(text = '', imageBase64 = null) {
   if (!activePeerCID || !currentAuthCID) return;
@@ -641,53 +961,6 @@ messageForm.addEventListener('submit', (e) => {
   messageInput.value = '';
 });
 
-// Кнопка скрепки
-attachBtn.addEventListener('click', () => {
-  imageFileInput.click();
-});
-
-// Выбор файла через диалоговое окно
-imageFileInput.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  try {
-    attachBtn.textContent = '⏳';
-    const compressed = await compressImageFile(file);
-    sendMessage('', compressed);
-  } catch (err) {
-    alert('Ошибка при сжатии изображения');
-  } finally {
-    attachBtn.textContent = '📎';
-    imageFileInput.value = '';
-  }
-});
-
-// Вставка скриншота из буфера обмена (Ctrl + V)
-window.addEventListener('paste', async (e) => {
-  if (!currentAuthCID || !activePeerCID) return;
-
-  const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-  for (let item of items) {
-    if (item.type.indexOf('image') !== -1) {
-      e.preventDefault();
-      const file = item.getAsFile();
-      if (!file) continue;
-
-      try {
-        attachBtn.textContent = '⏳';
-        const compressed = await compressImageFile(file);
-        sendMessage('', compressed);
-      } catch (err) {
-        alert('Ошибка при вставке скриншота');
-      } finally {
-        attachBtn.textContent = '📎';
-      }
-      break;
-    }
-  }
-});
-
 // Просмотрщик картинок на весь экран
 function openImageViewer(src) {
   viewerImg.src = src;
@@ -707,9 +980,14 @@ imageViewerModal.addEventListener('click', (e) => {
 });
 
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !imageViewerModal.classList.contains('hidden')) {
-    imageViewerModal.classList.add('hidden');
-    viewerImg.src = '';
+  if (e.key === 'Escape') {
+    if (!imageEditorModal.classList.contains('hidden')) {
+      imageEditorModal.classList.add('hidden');
+    }
+    if (!imageViewerModal.classList.contains('hidden')) {
+      imageViewerModal.classList.add('hidden');
+      viewerImg.src = '';
+    }
   }
 });
 

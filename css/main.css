@@ -13,9 +13,7 @@
   --ui-scale: 1;
 }
 
-/* ==================== ПРЕДУСТАНОВЛЕННЫЕ МЯГКИЕ ТЕМЫ ==================== */
-
-/* Серая (графит) */
+/* ==================== ТЕМЫ ОФОРМЛЕНИЯ ==================== */
 body[data-theme="gray"] {
   --bg-main: #141619;
   --bg-panel: #1a1e23;
@@ -29,7 +27,6 @@ body[data-theme="gray"] {
   --accent-color: #768390;
 }
 
-/* Светлая (мягкая молочная) */
 body[data-theme="light"] {
   --bg-main: #f4f4f2;
   --bg-panel: #eaeae6;
@@ -43,7 +40,6 @@ body[data-theme="light"] {
   --accent-color: #111111;
 }
 
-/* Салатовая (пастельная мята) */
 body[data-theme="lime"] {
   --bg-main: #0e1713;
   --bg-panel: #13221b;
@@ -57,7 +53,6 @@ body[data-theme="lime"] {
   --accent-color: #4ade80;
 }
 
-/* Фиолетовая (лавандовый сумрак) */
 body[data-theme="purple"] {
   --bg-main: #13111c;
   --bg-panel: #1a1727;
@@ -71,7 +66,6 @@ body[data-theme="purple"] {
   --accent-color: #c084fc;
 }
 
-/* Красная (приглушённый кармин) */
 body[data-theme="red"] {
   --bg-main: #180f11;
   --bg-panel: #221417;
@@ -85,7 +79,6 @@ body[data-theme="red"] {
   --accent-color: #fb7185;
 }
 
-/* Жёлтая (тёплый янтарный уют) */
 body[data-theme="yellow"] {
   --bg-main: #17140e;
   --bg-panel: #211c12;
@@ -99,7 +92,6 @@ body[data-theme="yellow"] {
   --accent-color: #fbbf24;
 }
 
-/* Розовая (пудровый вечер) */
 body[data-theme="pink"] {
   --bg-main: #171015;
   --bg-panel: #22151f;
@@ -113,7 +105,6 @@ body[data-theme="pink"] {
   --accent-color: #f472b6;
 }
 
-/* Украинская (пастельный сине-жёлтый) */
 body[data-theme="ukraine"] {
   --bg-main: #0c141f;
   --bg-panel: #111d2e;
@@ -438,7 +429,7 @@ html, body {
   color: var(--text-main);
 }
 
-/* Превью картинок в сообщении */
+/* Превью картинок */
 .msg-image-wrap {
   display: block;
   margin-top: 6px;
@@ -516,7 +507,179 @@ html, body {
   background: var(--bg-active);
 }
 
-/* Полноэкранный просмотрщик картинок */
+/* ==================== РЕДАКТОР ИЗОБРАЖЕНИЙ ==================== */
+#image-editor-modal {
+  padding: 0;
+  background: rgba(0, 0, 0, 0.96);
+  z-index: 1500;
+}
+
+.editor-window {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: #080808;
+}
+
+.editor-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #0f0f11;
+  border-bottom: 1px solid #222;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: env(safe-area-inset-top, 8px);
+}
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tool-btn {
+  background: #18181b;
+  border: 1px solid #333;
+  color: #ccc;
+  padding: 6px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.tool-btn.active {
+  background: #27272a;
+  border-color: #fff;
+  color: #fff;
+}
+
+.tool-btn.danger {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.editor-subbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: #0a0a0c;
+  border-bottom: 1px solid #1a1a1c;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.brush-size-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #888;
+}
+
+.brush-size-wrap input[type="range"] {
+  width: 90px;
+  accent-color: #fff;
+  cursor: pointer;
+}
+
+.color-presets {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.palette-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.palette-dot.active {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 2px #fff;
+}
+
+#editor-color-picker {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #444;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 0;
+}
+
+.editor-canvas-container {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #000;
+  touch-action: none;
+}
+
+#editor-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  cursor: crosshair;
+  background: transparent;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+#crop-selection-box {
+  position: absolute;
+  border: 2px dashed #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.editor-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #0f0f11;
+  border-top: 1px solid #222;
+  gap: 8px;
+  padding-bottom: env(safe-area-inset-bottom, 10px);
+}
+
+.editor-actions button {
+  padding: 10px 16px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid #333;
+}
+
+.editor-btn-secondary {
+  background: #18181b;
+  color: #aaa;
+}
+
+.editor-btn-accent {
+  background: #0284c7;
+  color: #fff;
+  border-color: #38bdf8;
+}
+
+.editor-btn-primary {
+  background: #fff;
+  color: #000;
+  font-weight: bold;
+}
+
+/* Просмотрщик картинок на весь экран */
 #image-viewer-modal {
   background: rgba(0, 0, 0, 0.95);
   flex-direction: column;
@@ -543,7 +706,7 @@ html, body {
   font-size: 12px;
 }
 
-/* Модалки */
+/* Модалки общего вида */
 .modal-overlay {
   position: fixed;
   inset: 0;

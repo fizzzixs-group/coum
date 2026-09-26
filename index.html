@@ -62,6 +62,59 @@
     </main>
   </div>
 
+  <!-- ВСТРОЕННЫЙ РЕДАКТОР ИЗОБРАЖЕНИЙ (КАК В ТГ) -->
+  <div id="image-editor-modal" class="modal-overlay hidden">
+    <div class="editor-window">
+      <!-- Верхняя панель инструментов -->
+      <div class="editor-toolbar">
+        <div class="tool-group">
+          <button type="button" class="tool-btn active" id="tool-brush" title="Кисть">КИСТЬ</button>
+          <button type="button" class="tool-btn" id="tool-highlighter" title="Маркер">МАРКЕР</button>
+          <button type="button" class="tool-btn" id="tool-eraser" title="Ластик">ЛАСТИК</button>
+          <button type="button" class="tool-btn" id="tool-text" title="Добавить надпись">[+ ТЕКСТ]</button>
+          <button type="button" class="tool-btn" id="tool-crop" title="Обрезать картинку">КАДРИРОВАНИЕ</button>
+        </div>
+
+        <div class="tool-group">
+          <button type="button" class="tool-btn" id="editor-undo-btn" title="Отменить действие">↺</button>
+          <button type="button" class="tool-btn danger" id="editor-cancel-btn">✕</button>
+        </div>
+      </div>
+
+      <!-- Вторая строка: палитра цветов и толщина -->
+      <div class="editor-subbar">
+        <div class="brush-size-wrap">
+          <span>РАЗМЕР:</span>
+          <input type="range" id="brush-size-input" min="2" max="50" value="6" />
+        </div>
+
+        <div class="color-presets">
+          <div class="palette-dot active" style="background:#ffffff;" data-color="#ffffff"></div>
+          <div class="palette-dot" style="background:#ef4444;" data-color="#ef4444"></div>
+          <div class="palette-dot" style="background:#eab308;" data-color="#eab308"></div>
+          <div class="palette-dot" style="background:#22c55e;" data-color="#22c55e"></div>
+          <div class="palette-dot" style="background:#3b82f6;" data-color="#3b82f6"></div>
+          <div class="palette-dot" style="background:#a855f7;" data-color="#a855f7"></div>
+          <div class="palette-dot" style="background:#000000; border:1px solid #555;" data-color="#000000"></div>
+          <input type="color" id="editor-color-picker" value="#ffffff" title="Свой цвет" />
+        </div>
+      </div>
+
+      <!-- Рабочая зона холста -->
+      <div class="editor-canvas-container" id="editor-canvas-container">
+        <canvas id="editor-canvas"></canvas>
+        <div id="crop-selection-box" class="hidden"></div>
+      </div>
+
+      <!-- Нижняя панель действий -->
+      <div class="editor-actions">
+        <button type="button" id="editor-quick-send-btn" class="editor-btn-secondary">ОТПРАВИТЬ КАК ЕСТЬ</button>
+        <button type="button" id="editor-finish-crop-btn" class="editor-btn-accent hidden">ПРИМЕНИТЬ ОБРЕЗКУ</button>
+        <button type="button" id="editor-send-btn" class="editor-btn-primary">ГОТОВО И ОТПРАВИТЬ</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ПРОСМОТР КАРТИНКИ НА ВЕСЬ ЭКРАН -->
   <div id="image-viewer-modal" class="modal-overlay hidden">
     <button id="close-viewer-btn" class="viewer-close-btn">[ЗАКРЫТЬ]</button>
