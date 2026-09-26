@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>coum&</title>
   <link rel="stylesheet" href="css/main.css">
 </head>
@@ -11,14 +11,19 @@
   <!-- ЭКРАН АВТОРИЗАЦИИ ПО CID -->
   <div id="auth-screen" class="screen">
     <div class="auth-box">
-      <input type="password" id="auth-input" autofocus autocomplete="off" />
-      <div id="auth-error" class="hidden">✕</div>
+      <!-- Секретный логотип: 5 быстрых кликов/тапов открывают админку -->
+      <div id="auth-logo" class="auth-logo-title" title="coum">coum&</div>
+      <div class="auth-input-row">
+        <input type="password" id="auth-input" autofocus autocomplete="off" placeholder="ВВЕДИТЕ CID" />
+        <div id="auth-error" class="hidden">✕</div>
+      </div>
     </div>
   </div>
 
   <!-- РАБОЧИЙ ЭКРАН -->
   <div id="app-screen" class="screen hidden">
-    <aside class="sidebar">
+    <!-- Левая панель (список чатов) -->
+    <aside class="sidebar" id="app-sidebar">
       <div class="sidebar-top">
         <div class="user-profile">
           <div class="user-display-name" id="my-display-name">---</div>
@@ -34,11 +39,16 @@
       </div>
     </aside>
 
-    <main class="chat-area">
-      <div class="chat-topbar" id="active-peer-header">---</div>
+    <!-- Область чата -->
+    <main class="chat-area" id="app-chat-area">
+      <div class="chat-topbar">
+        <!-- Кнопка «Назад» для смартфонов -->
+        <button id="mobile-back-btn" class="mobile-back-btn">←</button>
+        <span id="active-peer-header">---</span>
+      </div>
       <div class="messages-viewport" id="messages-container"></div>
       <form class="message-form" id="message-form">
-        <input type="text" id="message-input" autocomplete="off" />
+        <input type="text" id="message-input" autocomplete="off" placeholder="Сообщение..." />
         <button type="submit">ОТПРАВИТЬ</button>
       </form>
     </main>
@@ -47,7 +57,12 @@
   <!-- МОДАЛКА ПАРОЛЯ АДМИНА -->
   <div id="admin-auth-modal" class="modal-overlay hidden">
     <div class="modal-window">
+      <div class="modal-label">АДМИН ДОСТУП:</div>
       <input type="password" id="admin-pass-input" placeholder="пароль" autocomplete="off" />
+      <div class="modal-actions">
+        <button id="admin-auth-submit">ВОЙТИ</button>
+        <button id="admin-auth-cancel">ОТМЕНА</button>
+      </div>
     </div>
   </div>
 
@@ -70,7 +85,7 @@
     </div>
   </div>
 
-  <!-- Подключение Firebase через CDN -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
   

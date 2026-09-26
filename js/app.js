@@ -1,4 +1,3 @@
-// Конфигурация Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyB8PNy6s68CvLCG1UsUdge8mnj3Q4clXo",
   authDomain: "coum-a25ae.firebaseapp.com",
@@ -9,18 +8,15 @@ const firebaseConfig = {
   appId: "1:583802954010:web:8c41807a67c1053c80cca3"
 };
 
-// Инициализация базы данных
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 const ADMIN_PASS = 'ir87O9fjm_jrg';
 
-// Ссылки на узлы в облаке
 const cidsRef = db.ref('allowed_cids');
 const usersRef = db.ref('users');
 const messagesRef = db.ref('messages');
 
-// Локальное кэш-состояние из облака
 let cloudCids = [];
 let cloudUsers = {};
 let cloudMessages = {};
@@ -28,9 +24,8 @@ let cloudMessages = {};
 let currentAuthCID = localStorage.getItem('coum_active_cid') || null;
 let activePeerCID = localStorage.getItem('coum_last_peer') || null;
 
-// ==================== СЛУШАТЕЛИ FIREBASE (REALTIME) ====================
+// ==================== REALTIME СЛУШАТЕЛИ ====================
 
-// 1. Слушаем список разрешенных CID
 cidsRef.on('value', (snapshot) => {
   const data = snapshot.val();
   cloudCids = data ? Object.values(data) : [];
@@ -38,7 +33,6 @@ cidsRef.on('value', (snapshot) => {
   if (!adminPanel.classList.contains('hidden')) renderAdminCIDList();
 });
 
-// 2. Слушаем ники пользователей
 usersRef.on('value', (snapshot) => {
   cloudUsers = snapshot.val() || {};
   if (currentAuthCID) {
@@ -48,15 +42,12 @@ usersRef.on('value', (snapshot) => {
   }
 });
 
-// 3. Слушаем сообщения в реальном времени
 messagesRef.on('value', (snapshot) => {
   cloudMessages = snapshot.val() || {};
   if (currentAuthCID) {
     renderMessages();
   }
 });
-
-// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
 function generate11CharCID() {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -78,9 +69,10 @@ function escapeHTML(str) {
   }[tag] || tag));
 }
 
-// ==================== DOM ЭЛЕМЕНТЫ ====================
+// ==================== DOM ====================
 
 const authScreen = document.getElementById('auth-screen');
+const authLogo = document.getElementById('auth-logo');
 const appScreen = document.getElementById('app-screen');
 const authInput = document.getElementById('auth-input');
 const authError = document.getElementById('auth-error');
@@ -90,6 +82,7 @@ const myFixedCidEl = document.getElementById('my-fixed-cid');
 const editNameBtn = document.getElementById('edit-name-btn');
 const peersListEl = document.getElementById('peers-list');
 const activePeerHeaderEl = document.getElementById('active-peer-header');
+const mobileBackBtn = document.getElementById('mobile-back-btn');
 const messagesContainer = document.getElementById('messages-container');
 const messageForm = document.getElementById('message-form');
 const messageInput = document.getElementById('message-input');
@@ -97,6 +90,8 @@ const logoutBtn = document.getElementById('logout-btn');
 
 const adminAuthModal = document.getElementById('admin-auth-modal');
 const adminPassInput = document.getElementById('admin-pass-input');
+const adminAuthSubmit = document.getElementById('admin-auth-submit');
+const adminAuthCancel = document.getElementById('admin-auth-cancel');
 const adminPanel = document.getElementById('admin-panel');
 const adminCloseBtn = document.getElementById('admin-close-btn');
 const generateCidBtn = document.getElementById('generate-cid-btn');
@@ -104,12 +99,110 @@ const copyCidBtn = document.getElementById('copy-cid-btn');
 const lastGeneratedCidEl = document.getElementById('last-generated-cid');
 const adminCidListEl = document.getElementById('admin-cid-list');
 
-// ==================== ВХОД И ВЫХОД ====================
+// ==================== СЕКРЕТНЫЙ ВХОД В АДМИНКУ (ТАПЫ / КЛИКИ) ====================
+
+let logoClickCount = 0;
+let logoClickTimer = null;
+
+authLogo.addEventListener('click', () => {
+  logoClickCount++;
+  clearTimeout(logoClickTimer);
+
+  if (logoClickCount >= 5) {
+    logoClickCount = 0;
+    openAdminAuth();
+    return;
+  }
+
+  // Если не успел накликать 5 раз за 1.5 секунды — сброс
+  logoClickTimer = setTimeout(() => {
+    logoClickCount = 0;
+  }, 1500);
+});
+
+// Запасной хоткей для ПК (Ctrl+Alt+9 или Ctrl+Alt+Numpad9)
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.altKey && (e.code === 'Numpad9' || e.code === 'Digit9' || e.key === '9')) {
+    e.preventDefault();
+    openAdminAuth();
+  }
+});
+
+function openAdminAuth() {
+  adminAuthModal.classList.remove('hidden');
+  adminPassInput.value = '';
+  setTimeout(() => adminPassInput.focus(), 100);
+}
+
+function verifyAdminPass() {
+  if (adminPassInput.value === ADMIN_PASS) {
+    adminAuthModal.classList.add('hidden');
+    openAdminPanel();
+  } else {
+    adminAuthModal.classList.add('hidden');
+    adminPassInput.value = '';
+  }
+}
+
+adminAuthSubmit.addEventListener('click', verifyAdminPass);
+adminPassInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') verifyAdminPass();
+  if (e.key === 'Escape') adminAuthModal.classList.add('hidden');
+});
+
+adminAuthCancel.addEventListener('click', () => {
+  adminAuthModal.classList.add('hidden');
+});
+
+function openAdminPanel() {
+  adminPanel.classList.remove('hidden');
+  renderAdminCIDList();
+}
+
+adminCloseBtn.addEventListener('click', () => {
+  adminPanel.classList.add('hidden');
+});
+
+generateCidBtn.addEventListener('click', () => {
+  const newCID = generate11CharCID();
+  cidsRef.push(newCID);
+
+  lastGeneratedCidEl.textContent = newCID;
+  copyCidBtn.classList.remove('hidden');
+});
+
+copyCidBtn.addEventListener('click', () => {
+  const text = lastGeneratedCidEl.textContent;
+  if (text && text.startsWith('CID_')) {
+    navigator.clipboard.writeText(text);
+    copyCidBtn.textContent = 'СКОПИРОВАНО';
+    setTimeout(() => {
+      copyCidBtn.textContent = 'СКОПИРОВАТЬ';
+    }, 1200);
+  }
+});
+
+function renderAdminCIDList() {
+  adminCidListEl.innerHTML = '';
+  if (cloudCids.length === 0) {
+    adminCidListEl.innerHTML = '<span style="color:#444;">База пуста. Нажмите кнопку выше.</span>';
+    return;
+  }
+
+  cloudCids.forEach(cid => {
+    const item = document.createElement('div');
+    const namePart = cloudUsers[cid]?.name ? ` [${cloudUsers[cid].name}]` : '';
+    item.textContent = `${cid}${namePart}`;
+    adminCidListEl.appendChild(item);
+  });
+}
+
+// ==================== ВХОД / ВЫХОД ====================
 
 async function attemptLogin(inputCID) {
   const cleanCID = inputCID.trim();
+  if (!cleanCID) return;
   
-  // Проверяем наличие CID в облаке
   const snapshot = await cidsRef.once('value');
   const list = snapshot.val() ? Object.values(snapshot.val()) : [];
 
@@ -118,7 +211,6 @@ async function attemptLogin(inputCID) {
     currentAuthCID = cleanCID;
     localStorage.setItem('coum_active_cid', cleanCID);
 
-    // Если у пользователя ещё нет имени в облаке, запрашиваем
     const userSnap = await usersRef.child(cleanCID).once('value');
     if (!userSnap.exists()) {
       let initialName = prompt('Введите ваше имя:');
@@ -162,13 +254,19 @@ logoutBtn.addEventListener('click', () => {
   localStorage.removeItem('coum_last_peer');
   currentAuthCID = null;
   activePeerCID = null;
+  appScreen.classList.remove('chat-opened');
   appScreen.classList.add('hidden');
   authScreen.classList.remove('hidden');
   authInput.value = '';
   authError.classList.add('hidden');
 });
 
-// ==================== РЕНДЕР ====================
+// Стрелка назад для мобилок
+mobileBackBtn.addEventListener('click', () => {
+  appScreen.classList.remove('chat-opened');
+});
+
+// ==================== РЕНДЕР И ЧАТ ====================
 
 function renderProfile() {
   if (!currentAuthCID) return;
@@ -214,12 +312,14 @@ function renderPeersList() {
       localStorage.setItem('coum_last_peer', peerCID);
       renderPeersList();
       renderMessages();
+      // На телефоне переключаем экран в режим чата
+      appScreen.classList.add('chat-opened');
     };
     peersListEl.appendChild(btn);
   });
 
   const activeName = cloudUsers[activePeerCID]?.name || activePeerCID;
-  activePeerHeaderEl.textContent = `ЧАТ: ${activeName} (${activePeerCID})`;
+  activePeerHeaderEl.textContent = `${activeName} (${activePeerCID})`;
 }
 
 function renderMessages() {
@@ -263,80 +363,11 @@ messageForm.addEventListener('submit', (e) => {
     createdAt: new Date().toISOString()
   };
 
-  // Отправка в облачную базу
   messagesRef.child(chatKey).push(newMsg);
   messageInput.value = '';
 });
 
-// ==================== АДМИН-КОНСОЛЬ ====================
-
-window.addEventListener('keydown', (e) => {
-  if (e.ctrlKey && e.altKey && (e.code === 'Numpad9' || e.key === '9')) {
-    e.preventDefault();
-    adminAuthModal.classList.remove('hidden');
-    adminPassInput.value = '';
-    adminPassInput.focus();
-  }
-});
-
-adminPassInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    if (adminPassInput.value === ADMIN_PASS) {
-      adminAuthModal.classList.add('hidden');
-      openAdminPanel();
-    } else {
-      adminAuthModal.classList.add('hidden');
-      adminPassInput.value = '';
-    }
-  } else if (e.key === 'Escape') {
-    adminAuthModal.classList.add('hidden');
-  }
-});
-
-function openAdminPanel() {
-  adminPanel.classList.remove('hidden');
-  renderAdminCIDList();
-}
-
-adminCloseBtn.addEventListener('click', () => {
-  adminPanel.classList.add('hidden');
-});
-
-generateCidBtn.addEventListener('click', () => {
-  const newCID = generate11CharCID();
-  cidsRef.push(newCID); // Сохраняем сразу в Firebase
-
-  lastGeneratedCidEl.textContent = newCID;
-  copyCidBtn.classList.remove('hidden');
-});
-
-copyCidBtn.addEventListener('click', () => {
-  const text = lastGeneratedCidEl.textContent;
-  if (text && text.startsWith('CID_')) {
-    navigator.clipboard.writeText(text);
-    copyCidBtn.textContent = 'СКОПИРОВАНО';
-    setTimeout(() => {
-      copyCidBtn.textContent = 'СКОПИРОВАТЬ';
-    }, 1200);
-  }
-});
-
-function renderAdminCIDList() {
-  adminCidListEl.innerHTML = '';
-  if (cloudCids.length === 0) {
-    adminCidListEl.innerHTML = '<span style="color:#444;">База пуста. Нажмите кнопку выше.</span>';
-    return;
-  }
-
-  cloudCids.forEach(cid => {
-    const item = document.createElement('div');
-    const namePart = cloudUsers[cid]?.name ? ` [${cloudUsers[cid].name}]` : '';
-    item.textContent = `${cid}${namePart}`;
-    adminCidListEl.appendChild(item);
-  });
-}
-
-// Проверка сессии при запуске
+// Проверка сессии
 if (currentAuthCID) {
   cidsRef.once('value').then((snap) => {
     const list = snap.val() ? Object.values(snap.val()) : [];
