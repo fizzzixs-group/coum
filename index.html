@@ -51,11 +51,21 @@
         <span id="active-peer-header">---</span>
       </div>
       <div class="messages-viewport" id="messages-container"></div>
+      
+      <!-- Форма отправки с кнопкой скрепки -->
       <form class="message-form" id="message-form">
-        <input type="text" id="message-input" autocomplete="off" placeholder="Сообщение..." />
+        <input type="file" id="image-file-input" accept="image/*" class="hidden" />
+        <button type="button" id="attach-btn" title="Прикрепить скриншот/фото">📎</button>
+        <input type="text" id="message-input" autocomplete="off" placeholder="Сообщение или вставьте скриншот (Ctrl+V)..." />
         <button type="submit">ОТПРАВИТЬ</button>
       </form>
     </main>
+  </div>
+
+  <!-- ПРОСМОТР КАРТИНКИ НА ВЕСЬ ЭКРАН -->
+  <div id="image-viewer-modal" class="modal-overlay hidden">
+    <button id="close-viewer-btn" class="viewer-close-btn">[ЗАКРЫТЬ]</button>
+    <img id="viewer-img" src="" alt="Изображение" />
   </div>
 
   <!-- МОДАЛКА НАСТРОЕК -->

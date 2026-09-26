@@ -19,17 +19,14 @@ const usersRef = db.ref('users');
 const messagesRef = db.ref('messages');
 
 let cloudCids = [];
-let cloudCidsKeys = {}; // key in DB -> cid string
+let cloudCidsKeys = {};
 let cloudUsers = {};
 let cloudMessages = {};
 
 let currentAuthCID = localStorage.getItem('coum_active_cid') || null;
 let activePeerCID = localStorage.getItem('coum_last_peer') || null;
 
-// ==================== СИСТЕМА ДАТ И ЧАСОВОГО ПОЯСА ====================
-
-// Автоматически берет локальный часовой пояс браузера
-const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+// ==================== СИСТЕМА ДАТ И ТАЙМЗОНЫ ====================
 
 function formatMessageTime(isoString) {
   if (!isoString) return '--:--';
@@ -55,7 +52,6 @@ function formatDateSeparator(isoString) {
   yesterday.setDate(now.getDate() - 1);
   if (date.toDateString() === yesterday.toDateString()) return 'ВЧЕРА';
 
-  // Пример: "12 июля" или "12 июля 2025"
   const options = { day: 'numeric', month: 'long' };
   if (date.getFullYear() !== now.getFullYear()) {
     options.year = 'numeric';
@@ -70,7 +66,6 @@ cidsRef.on('value', (snapshot) => {
   cloudCidsKeys = data;
   cloudCids = Object.values(data);
 
-  // Если текущего пользователя удалили из базы — принудительно выкидываем
   if (currentAuthCID && !cloudCids.includes(currentAuthCID)) {
     performLogout();
     return;
@@ -116,6 +111,41 @@ function escapeHTML(str) {
   }[tag] || tag));
 }
 
+// ==================== СЖАТИЕ КАРТИНОК НА ЛЕТУ ====================
+
+function compressImageFile(file, maxWidth = 1200, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Сжимаем в легкий WebP (или JPEG если браузер старый)
+        const compressedBase64 = canvas.toDataURL('image/webp', quality);
+        resolve(compressedBase64);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 // ==================== DOM ====================
 
 const authScreen = document.getElementById('auth-screen');
@@ -133,6 +163,13 @@ const mobileBackBtn = document.getElementById('mobile-back-btn');
 const messagesContainer = document.getElementById('messages-container');
 const messageForm = document.getElementById('message-form');
 const messageInput = document.getElementById('message-input');
+const attachBtn = document.getElementById('attach-btn');
+const imageFileInput = document.getElementById('image-file-input');
+
+// Просмотрщик картинок
+const imageViewerModal = document.getElementById('image-viewer-modal');
+const viewerImg = document.getElementById('viewer-img');
+const closeViewerBtn = document.getElementById('close-viewer-btn');
 
 // Настройки
 const openSettingsBtn = document.getElementById('open-settings-btn');
@@ -192,7 +229,6 @@ scaleButtons.forEach(btn => {
 });
 
 function applyTheme(themeName) {
-  // Очищаем кастомные стили
   document.documentElement.removeAttribute('style');
   const curScale = localStorage.getItem('coum_ui_scale') || '1.0';
   document.documentElement.style.setProperty('--ui-scale', curScale);
@@ -244,11 +280,9 @@ applyCustomThemeBtn.addEventListener('click', () => {
   );
 });
 
-// Открытие и закрытие настроек
 openSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
 settingsCloseBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
-// Кнопка выхода с обязательным подтверждением
 settingsLogoutBtn.addEventListener('click', () => {
   if (confirm('Вы уверены, что хотите выйти из аккаунта?')) {
     settingsModal.classList.add('hidden');
@@ -351,7 +385,6 @@ copyCidBtn.addEventListener('click', () => {
   }
 });
 
-// Рендер CID в админке с кнопкой полного удаления
 function renderAdminCIDList() {
   adminCidListEl.innerHTML = '';
   const entries = Object.entries(cloudCidsKeys);
@@ -380,7 +413,6 @@ function renderAdminCIDList() {
   });
 }
 
-// Модальное окно подтверждения удаления
 function openDeleteModal(dbKey, cid) {
   cidPendingDelete = { dbKey, cid };
   deleteConfirmModal.classList.remove('hidden');
@@ -402,7 +434,6 @@ confirmDeleteBtn.addEventListener('click', async () => {
   if (!cidPendingDelete) return;
   const { dbKey, cid } = cidPendingDelete;
 
-  // Удаляем навсегда из allowed_cids и профиль из users
   await cidsRef.child(dbKey).remove();
   await usersRef.child(cid).remove();
 
@@ -536,7 +567,6 @@ function renderMessages() {
   list.forEach(msg => {
     const currentDayKey = getMessageDayKey(msg.createdAt);
 
-    // Если наступил новый день — вставляем разделитель даты
     if (currentDayKey && currentDayKey !== lastDayKey) {
       lastDayKey = currentDayKey;
       const dateDiv = document.createElement('div');
@@ -551,32 +581,136 @@ function renderMessages() {
     const authorName = isSelf ? 'Я' : (cloudUsers[msg.sender]?.name || msg.sender);
     const timeFormatted = formatMessageTime(msg.createdAt);
 
+    let contentHTML = '';
+    if (msg.text) {
+      contentHTML += `<span class="msg-text">${escapeHTML(msg.text)}</span>`;
+    }
+
+    if (msg.image) {
+      contentHTML += `
+        <div class="msg-image-wrap">
+          <img src="${msg.image}" class="msg-image" alt="фото" />
+        </div>
+      `;
+    }
+
     row.innerHTML = `
       <span class="msg-time">[${timeFormatted}]</span>
       <span class="msg-author">${escapeHTML(authorName)}:</span>
-      <span class="msg-text">${escapeHTML(msg.text)}</span>
+      ${contentHTML}
     `;
+
+    // Клик на превью открывает полный экран
+    const imgEl = row.querySelector('.msg-image');
+    if (imgEl) {
+      imgEl.onclick = () => openImageViewer(msg.image);
+    }
+
     messagesContainer.appendChild(row);
   });
 
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-messageForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const text = messageInput.value.trim();
-  if (!text || !activePeerCID || !currentAuthCID) return;
+// ==================== ОТПРАВКА СООБЩЕНИЙ И КАРТИНОК ====================
+
+function sendMessage(text = '', imageBase64 = null) {
+  if (!activePeerCID || !currentAuthCID) return;
+  if (!text && !imageBase64) return;
 
   const chatKey = getChatKey(currentAuthCID, activePeerCID);
 
   const newMsg = {
     sender: currentAuthCID,
-    text: text,
+    text: text.trim(),
     createdAt: new Date().toISOString()
   };
 
+  if (imageBase64) {
+    newMsg.image = imageBase64;
+  }
+
   messagesRef.child(chatKey).push(newMsg);
+}
+
+messageForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = messageInput.value.trim();
+  if (!text) return;
+  sendMessage(text, null);
   messageInput.value = '';
+});
+
+// Кнопка скрепки
+attachBtn.addEventListener('click', () => {
+  imageFileInput.click();
+});
+
+// Выбор файла через диалоговое окно
+imageFileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  try {
+    attachBtn.textContent = '⏳';
+    const compressed = await compressImageFile(file);
+    sendMessage('', compressed);
+  } catch (err) {
+    alert('Ошибка при сжатии изображения');
+  } finally {
+    attachBtn.textContent = '📎';
+    imageFileInput.value = '';
+  }
+});
+
+// Вставка скриншота из буфера обмена (Ctrl + V)
+window.addEventListener('paste', async (e) => {
+  if (!currentAuthCID || !activePeerCID) return;
+
+  const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+  for (let item of items) {
+    if (item.type.indexOf('image') !== -1) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (!file) continue;
+
+      try {
+        attachBtn.textContent = '⏳';
+        const compressed = await compressImageFile(file);
+        sendMessage('', compressed);
+      } catch (err) {
+        alert('Ошибка при вставке скриншота');
+      } finally {
+        attachBtn.textContent = '📎';
+      }
+      break;
+    }
+  }
+});
+
+// Просмотрщик картинок на весь экран
+function openImageViewer(src) {
+  viewerImg.src = src;
+  imageViewerModal.classList.remove('hidden');
+}
+
+closeViewerBtn.addEventListener('click', () => {
+  imageViewerModal.classList.add('hidden');
+  viewerImg.src = '';
+});
+
+imageViewerModal.addEventListener('click', (e) => {
+  if (e.target === imageViewerModal) {
+    imageViewerModal.classList.add('hidden');
+    viewerImg.src = '';
+  }
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !imageViewerModal.classList.contains('hidden')) {
+    imageViewerModal.classList.add('hidden');
+    viewerImg.src = '';
+  }
 });
 
 messageInput.addEventListener('focus', () => {

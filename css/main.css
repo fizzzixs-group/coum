@@ -113,7 +113,7 @@ body[data-theme="pink"] {
   --accent-color: #f472b6;
 }
 
-/* Украинская (пастельный сине-жёлтый фридом) */
+/* Украинская (пастельный сине-жёлтый) */
 body[data-theme="ukraine"] {
   --bg-main: #0c141f;
   --bg-panel: #111d2e;
@@ -216,7 +216,7 @@ html, body {
   font-weight: bold;
 }
 
-/* Рабочий интерфейс */
+/* Рабочий экран */
 #app-screen {
   display: flex;
   position: relative;
@@ -390,7 +390,6 @@ html, body {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Разделитель дат (СЕГОДНЯ, ВЧЕРА, 12 ИЮЛЯ) */
 .date-separator {
   display: flex;
   align-items: center;
@@ -439,6 +438,29 @@ html, body {
   color: var(--text-main);
 }
 
+/* Превью картинок в сообщении */
+.msg-image-wrap {
+  display: block;
+  margin-top: 6px;
+}
+
+.msg-image {
+  max-width: 240px;
+  max-height: 200px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  display: block;
+  object-fit: cover;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.msg-image:hover {
+  opacity: 0.85;
+  transform: scale(1.02);
+}
+
+/* Форма отправки сообщения */
 .message-form {
   padding: 8px 12px;
   border-top: 1px solid var(--border-color);
@@ -446,9 +468,27 @@ html, body {
   gap: 8px;
   background: var(--bg-panel);
   flex-shrink: 0;
+  align-items: center;
 }
 
-.message-form input {
+#attach-btn {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 9px 12px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#attach-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-bright);
+}
+
+.message-form input[type="text"] {
   flex: 1;
   background: var(--bg-input);
   border: 1px solid var(--border-color);
@@ -459,24 +499,51 @@ html, body {
   border-radius: 0;
 }
 
-.message-form input:focus {
+.message-form input[type="text"]:focus {
   border-color: var(--accent-color);
 }
 
-.message-form button {
+.message-form button[type="submit"] {
   background: var(--bg-hover);
   color: var(--text-bright);
   border: 1px solid var(--border-color);
-  padding: 0 14px;
+  padding: 10px 14px;
   cursor: pointer;
   border-radius: 0;
 }
 
-.message-form button:hover {
+.message-form button[type="submit"]:hover {
   background: var(--bg-active);
 }
 
-/* Модалки общего вида */
+/* Полноэкранный просмотрщик картинок */
+#image-viewer-modal {
+  background: rgba(0, 0, 0, 0.95);
+  flex-direction: column;
+  padding: 10px;
+}
+
+#viewer-img {
+  max-width: 95vw;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 4px;
+  border: 1px solid #333;
+}
+
+.viewer-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: #111;
+  color: #fff;
+  border: 1px solid #444;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* Модалки */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -650,7 +717,7 @@ html, body {
   background: #3a1518;
 }
 
-/* Админ консоль */
+/* Админка */
 .admin-window {
   background: var(--bg-panel);
   border: 1px solid var(--border-color);
