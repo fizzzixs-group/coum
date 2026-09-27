@@ -10,15 +10,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#000000">
 
-  <link rel="stylesheet" href="css/main.css?v=5">
+  <link rel="stylesheet" href="css/main.css?v=4">
 </head>
 <body>
 
-  <!-- АУДИО ТЕЛЕФОННОГО ПОТОКА (1-на-1) -->
+  <!-- АУДИО ТЕЛЕФОННОГО ПОТОКА -->
   <audio id="remote-audio" autoplay playsinline></audio>
-
-  <!-- КОНТЕЙНЕР ДЛЯ ГРУППОВЫХ АУДИОПОТОКОВ -->
-  <div id="group-audio-streams" class="hidden"></div>
 
   <!-- ЭКРАН АВТОРИЗАЦИИ ПО CID -->
   <div id="auth-screen" class="screen">
@@ -83,6 +80,9 @@
 
     <!-- Область чата -->
     <main class="chat-area" id="app-chat-area">
+      <!-- Баннер шапки чата (заполняется баннером собеседника или группы) -->
+      <div id="chat-topbar-banner-bg" class="chat-topbar-banner-bg"></div>
+
       <div class="chat-topbar">
         <div class="chat-topbar-left">
           <button id="mobile-back-btn" class="mobile-back-btn">←</button>
@@ -95,20 +95,9 @@
         <div class="chat-topbar-right">
           <!-- Кнопка участников / настроек группы -->
           <button id="group-manage-btn" class="call-action-btn hidden" title="Настройки группы">👥 ИНФО</button>
-          <!-- Кнопка голосового звонка 1-на-1 -->
+          <!-- Кнопка голосового звонка -->
           <button id="start-call-btn" class="call-action-btn" title="Голосовой звонок">📞</button>
-          <!-- Кнопка запуска войса в группе -->
-          <button id="start-group-voice-btn" class="call-action-btn hidden" title="Начать групповой звонок">📞 ВОЙС</button>
         </div>
-      </div>
-
-      <!-- Плашка активного группового войса -->
-      <div id="group-voice-banner" class="group-voice-banner hidden">
-        <div class="group-voice-status">
-          <span class="voice-indicator-dot"></span>
-          <span>Голосовой чат активен (<span id="voice-banner-count">0</span> уч.)</span>
-        </div>
-        <button id="join-group-voice-btn" class="voice-btn-join">ВОЙТИ</button>
       </div>
 
       <!-- Плашка закрепленного сообщения (кликабельна) -->
@@ -145,23 +134,6 @@
         <button type="submit" id="send-msg-btn">ОТПРАВИТЬ</button>
       </form>
     </main>
-  </div>
-
-  <!-- МОДАЛКА ГРУППОВОГО ГОЛОСОВОГО ЧАТА -->
-  <div id="group-voice-modal" class="modal-overlay hidden">
-    <div class="group-voice-window">
-      <div class="group-voice-header">
-        <span class="voice-title" id="voice-modal-group-title">ГОЛОСОВОЙ ЧАТ</span>
-        <span class="voice-participants-badge" id="voice-modal-count">0/5</span>
-      </div>
-
-      <div class="group-voice-grid" id="group-voice-grid"></div>
-
-      <div class="group-voice-footer">
-        <button type="button" id="group-voice-mute-btn" class="voice-control-btn mute">МИКРОФОН: ВКЛ</button>
-        <button type="button" id="group-voice-leave-btn" class="voice-control-btn leave">ВЫЙТИ</button>
-      </div>
-    </div>
   </div>
 
   <!-- МОДАЛКА СОЗДАНИЯ ГРУППЫ -->
@@ -250,7 +222,7 @@
     <button type="button" class="context-menu-item danger" id="ctx-delete-btn">Удалить у всех</button>
   </div>
 
-  <!-- ОКНО ВХОДЯЩЕГО ВЫЗОВА 1-на-1 -->
+  <!-- ОКНО ВХОДЯЩЕГО ВЫЗОВА -->
   <div id="incoming-call-modal" class="modal-overlay hidden">
     <div class="call-window incoming-window">
       <div class="call-title">ВХОДЯЩИЙ ЗВОНОК</div>
@@ -262,7 +234,7 @@
     </div>
   </div>
 
-  <!-- ОКНО АКТИВНОГО / ИСХОДЯЩЕГО ЗВОНКА 1-на-1 -->
+  <!-- ОКНО АКТИВНОГО / ИСХОДЯЩЕГО ЗВОНКА -->
   <div id="active-call-modal" class="modal-overlay hidden">
     <div class="call-window">
       <div class="call-status" id="call-status-label">ВЫЗОВ...</div>
@@ -288,7 +260,7 @@
         </div>
 
         <div class="tool-group">
-          <button type="button" class="tool-btn id="editor-undo-btn" title="Отменить действие">↺</button>
+          <button type="button" class="tool-btn" id="editor-undo-btn" title="Отменить действие">↺</button>
           <button type="button" class="tool-btn danger" id="editor-cancel-btn">✕</button>
         </div>
       </div>
@@ -330,7 +302,7 @@
     <img id="viewer-img" src="" alt="Изображение" />
   </div>
 
-  <!-- МОДАЛКА НАСТРОЕК (АВАТАРКА И ПРИВАТНОСТЬ) -->
+  <!-- МОДАЛКА НАСТРОЕК (ВКЛЮЧАЯ АВАТАРКУ И БАННЕР) -->
   <div id="settings-modal" class="modal-overlay hidden">
     <div class="settings-window">
       <div class="settings-header">
@@ -338,19 +310,31 @@
         <button id="settings-close-btn">[X]</button>
       </div>
 
-      <!-- Кастомизация аватарки (поддержка GIF) -->
+      <!-- Кастомизация профиля: Баннер и Аватарка (поддержка GIF) -->
       <div class="settings-section">
-        <label class="settings-label">АВАТАРКА (GIF / ФОТО ДО 2 МБ):</label>
+        <label class="settings-label">ПРОФИЛЬ: БАННЕР И АВАТАРКА (GIF / ФОТО):</label>
         
-        <div class="profile-avatar-setting-row">
-          <div class="profile-avatar-preview" id="settings-avatar-preview"></div>
-          <div class="upload-btn-group">
-            <input type="file" id="avatar-file-input" accept="image/*" class="hidden">
-            <button type="button" id="upload-avatar-btn" class="btn-secondary">ЗАГРУЗИТЬ АВУ</button>
-            <button type="button" id="clear-avatar-btn" class="btn-tiny-danger" title="Удалить аватар">✕</button>
+        <div class="profile-preview-card" id="settings-banner-preview">
+          <div class="profile-preview-overlay"></div>
+          <div class="profile-avatar-preview-wrap">
+            <div class="profile-avatar-preview" id="settings-avatar-preview"></div>
           </div>
         </div>
-        <div class="sub-hint-text">Анимированные GIF проигрываются в списке чатов, профиле и сообщениях.</div>
+
+        <div class="profile-upload-actions">
+          <div class="upload-btn-group">
+            <input type="file" id="avatar-file-input" accept="image/*" class="hidden">
+            <button type="button" id="upload-avatar-btn" class="btn-secondary">СМЕНИТЬ АВУ</button>
+            <button type="button" id="clear-avatar-btn" class="btn-tiny-danger" title="Удалить аватар">✕</button>
+          </div>
+
+          <div class="upload-btn-group">
+            <input type="file" id="banner-file-input" accept="image/*" class="hidden">
+            <button type="button" id="upload-banner-btn" class="btn-secondary">СМЕНИТЬ БАННЕР</button>
+            <button type="button" id="clear-banner-btn" class="btn-tiny-danger" title="Удалить баннер">✕</button>
+          </div>
+        </div>
+        <div class="sub-hint-text">Поддерживаются анимированные GIF и фото до 2 МБ. Анимация проигрывается у всех участников.</div>
       </div>
 
       <!-- Приватность CID -->
@@ -467,6 +451,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
   
-  <script src="js/app.js?v=5"></script>
+  <script src="js/app.js?v=4"></script>
 </body>
 </html>
