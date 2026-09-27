@@ -154,6 +154,7 @@ const authError = document.getElementById('auth-error');
 
 const myDisplayNameEl = document.getElementById('my-display-name');
 const myFixedCidEl = document.getElementById('my-fixed-cid');
+const myMiniAvatarEl = document.getElementById('my-mini-avatar');
 const editNameBtn = document.getElementById('edit-name-btn');
 const peersListEl = document.getElementById('peers-list');
 const sidebarSectionTitle = document.getElementById('sidebar-section-title');
@@ -170,6 +171,8 @@ const plusDropdownMenu = document.getElementById('plus-dropdown-menu');
 const dropdownCreateGroupBtn = document.getElementById('dropdown-create-group-btn');
 
 // Чат
+const chatTopbarBannerBg = document.getElementById('chat-topbar-banner-bg');
+const activeChatAvatar = document.getElementById('active-chat-avatar');
 const activePeerHeaderEl = document.getElementById('active-peer-header');
 const activeGroupSubtitle = document.getElementById('active-group-subtitle');
 const groupManageBtn = document.getElementById('group-manage-btn');
@@ -233,11 +236,20 @@ const imageViewerModal = document.getElementById('image-viewer-modal');
 const viewerImg = document.getElementById('viewer-img');
 const closeViewerBtn = document.getElementById('close-viewer-btn');
 
-// Настройки
+// Настройки, аватарка и баннер
 const openSettingsBtn = document.getElementById('open-settings-btn');
 const settingsModal = document.getElementById('settings-modal');
 const settingsCloseBtn = document.getElementById('settings-close-btn');
 const settingsLogoutBtn = document.getElementById('settings-logout-btn');
+const settingsBannerPreview = document.getElementById('settings-banner-preview');
+const settingsAvatarPreview = document.getElementById('settings-avatar-preview');
+const avatarFileInput = document.getElementById('avatar-file-input');
+const uploadAvatarBtn = document.getElementById('upload-avatar-btn');
+const clearAvatarBtn = document.getElementById('clear-avatar-btn');
+const bannerFileInput = document.getElementById('banner-file-input');
+const uploadBannerBtn = document.getElementById('upload-banner-btn');
+const clearBannerBtn = document.getElementById('clear-banner-btn');
+
 const hideCidCheckbox = document.getElementById('hide-cid-checkbox');
 const scaleButtons = document.querySelectorAll('.scale-btn');
 const themeButtons = document.querySelectorAll('.theme-select-btn');
@@ -336,7 +348,6 @@ function renderSidebar() {
       if (searchFilterMode === 'name') {
         return userName.includes(lowerQuery);
       } else {
-        // Если юзер скрыл CID, в поиске по CID он не отображается
         if (userObj.hideCid) return false;
         return cidLower.includes(lowerQuery);
       }
@@ -352,14 +363,18 @@ function renderSidebar() {
       const peerObj = cloudUsers[peerCID] || {};
       const displayName = peerObj.name || peerCID;
       const cidLabel = peerObj.hideCid ? '[CID СКРЫТ]' : peerCID;
+      const avatarStyle = peerObj.avatarUrl ? `background-image: url('${peerObj.avatarUrl}');` : '';
 
       const btn = document.createElement('button');
       btn.className = `peer-btn ${peerCID === activeTargetID ? 'active' : ''}`;
       
       btn.innerHTML = `
-        <span class="peer-btn-name">${escapeHTML(displayName)}</span>
-        <span class="peer-btn-cid">${cidLabel}</span>
-        ${isAlreadyChat ? '<span class="peer-btn-tag">[УЖЕ В ЧАТАХ]</span>' : '<span class="peer-btn-tag" style="color:#38bdf8;">[НАЧАТЬ ДИАЛОГ]</span>'}
+        <div class="peer-avatar-thumb" style="${avatarStyle}"></div>
+        <div class="peer-btn-info">
+          <span class="peer-btn-name">${escapeHTML(displayName)}</span>
+          <span class="peer-btn-cid">${cidLabel}</span>
+          ${isAlreadyChat ? '<span class="peer-btn-tag">[УЖЕ В ЧАТАХ]</span>' : '<span class="peer-btn-tag" style="color:#38bdf8;">[НАЧАТЬ ДИАЛОГ]</span>'}
+        </div>
       `;
 
       btn.onclick = () => selectChat(peerCID, 'direct');
@@ -380,6 +395,7 @@ function renderSidebar() {
       let displayName = '';
       let subInfo = '';
       let tagHTML = '';
+      let avatarStyle = '';
 
       if (isGroup) {
         displayName = info.title || 'Безымянная группа';
@@ -394,6 +410,9 @@ function renderSidebar() {
         const peerObj = cloudUsers[targetId] || {};
         displayName = peerObj.name || info.peerUsername || targetId;
         subInfo = peerObj.hideCid ? '[CID СКРЫТ]' : targetId;
+        if (peerObj.avatarUrl) {
+          avatarStyle = `background-image: url('${peerObj.avatarUrl}');`;
+        }
 
         if (info.status === 'pending') {
           tagHTML = info.isInitiator ? '<span class="peer-btn-tag">[ОЖИДАНИЕ ОТВЕТА]</span>' : '<span class="peer-btn-tag" style="color:#ef4444;">[ЗАПРОС НА ПЕРЕПИСКУ]</span>';
@@ -403,9 +422,12 @@ function renderSidebar() {
       const btn = document.createElement('button');
       btn.className = `peer-btn ${targetId === activeTargetID ? 'active' : ''}`;
       btn.innerHTML = `
-        <span class="peer-btn-name">${escapeHTML(displayName)}</span>
-        <span class="peer-btn-cid">${subInfo}</span>
-        ${tagHTML}
+        <div class="peer-avatar-thumb" style="${avatarStyle}"></div>
+        <div class="peer-btn-info">
+          <span class="peer-btn-name">${escapeHTML(displayName)}</span>
+          <span class="peer-btn-cid">${subInfo}</span>
+          ${tagHTML}
+        </div>
       `;
 
       btn.onclick = () => selectChat(targetId, isGroup ? 'group' : 'direct');
@@ -437,6 +459,8 @@ function updateTopBarInfo() {
     activeGroupSubtitle.classList.add('hidden');
     groupManageBtn.classList.add('hidden');
     startCallBtn.classList.remove('hidden');
+    chatTopbarBannerBg.style.backgroundImage = 'none';
+    activeChatAvatar.style.backgroundImage = 'none';
     return;
   }
 
@@ -447,6 +471,8 @@ function updateTopBarInfo() {
     activeGroupSubtitle.classList.remove('hidden');
     groupManageBtn.classList.remove('hidden');
     startCallBtn.classList.add('hidden');
+    chatTopbarBannerBg.style.backgroundImage = 'none';
+    activeChatAvatar.style.backgroundImage = 'none';
   } else {
     const peerObj = cloudUsers[activeTargetID] || {};
     const name = peerObj.name || activeTargetID;
@@ -455,6 +481,19 @@ function updateTopBarInfo() {
     activeGroupSubtitle.classList.add('hidden');
     groupManageBtn.classList.add('hidden');
     startCallBtn.classList.remove('hidden');
+
+    // Рендер аватарки и баннера собеседника в шапке чата
+    if (peerObj.avatarUrl) {
+      activeChatAvatar.style.backgroundImage = `url('${peerObj.avatarUrl}')`;
+    } else {
+      activeChatAvatar.style.backgroundImage = 'none';
+    }
+
+    if (peerObj.bannerUrl) {
+      chatTopbarBannerBg.style.backgroundImage = `url('${peerObj.bannerUrl}')`;
+    } else {
+      chatTopbarBannerBg.style.backgroundImage = 'none';
+    }
   }
 }
 
@@ -884,7 +923,6 @@ function updatePinnedBarUI(cloudPinned) {
   pinnedBar.dataset.pinnedType = '';
 }
 
-// Клик по плашке закрепа — плавный переход к сообщению
 pinnedBar.addEventListener('click', (e) => {
   if (e.target === unpinBtn || unpinBtn.contains(e.target)) return;
   if (!currentPinnedMsgId) return;
@@ -952,8 +990,13 @@ function renderMessages(messagesData) {
     row.dataset.msgId = msg.id;
 
     const isSelf = msg.senderCid === currentAuthCID;
-    const authorName = isSelf ? 'Я' : (msg.senderName || cloudUsers[msg.senderCid]?.name || msg.senderCid);
+    const authorUser = cloudUsers[msg.senderCid] || {};
+    const authorName = isSelf ? 'Я' : (msg.senderName || authorUser.name || msg.senderCid);
     const timeFormatted = formatMessageTime(isoDate);
+
+    // Аватарка автора сообщения
+    const senderAvatarUrl = authorUser.avatarUrl || '';
+    const avatarStyle = senderAvatarUrl ? `background-image: url('${senderAvatarUrl}');` : '';
 
     let contentHTML = '';
     if (msg.text) {
@@ -992,10 +1035,15 @@ function renderMessages(messagesData) {
     }
 
     row.innerHTML = `
-      <span class="msg-time">[${timeFormatted}]</span>
-      <span class="msg-author">${escapeHTML(authorName)}:</span>
-      ${contentHTML}
-      ${reactionsHTML}
+      <div class="msg-avatar-col" style="${avatarStyle}"></div>
+      <div class="msg-body-col">
+        <div class="msg-meta-line">
+          <span class="msg-time">[${timeFormatted}]</span>
+          <span class="msg-author">${escapeHTML(authorName)}:</span>
+        </div>
+        ${contentHTML}
+        ${reactionsHTML}
+      </div>
     `;
 
     const imgEl = row.querySelector('.msg-image');
@@ -1067,7 +1115,6 @@ window.addEventListener('click', (e) => {
   }
 });
 
-// Скопировать текст сообщения
 ctxCopyBtn.addEventListener('click', () => {
   if (!targetContextMessage || !targetContextMessage.text) return;
   navigator.clipboard.writeText(targetContextMessage.text);
@@ -1922,6 +1969,63 @@ window.addEventListener('paste', (e) => {
   }
 });
 
+// ==================== КАСТОМИЗАЦИЯ ПРОФИЛЯ (АВАТАРКИ И БАННЕРЫ С ПОДДЕРЖКОЙ GIF) ====================
+
+uploadAvatarBtn.addEventListener('click', () => avatarFileInput.click());
+uploadBannerBtn.addEventListener('click', () => bannerFileInput.click());
+
+avatarFileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  handleProfileMediaUpload(file, 'avatarUrl');
+  avatarFileInput.value = '';
+});
+
+bannerFileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  handleProfileMediaUpload(file, 'bannerUrl');
+  bannerFileInput.value = '';
+});
+
+clearAvatarBtn.addEventListener('click', async () => {
+  if (!currentAuthCID) return;
+  await usersRef.child(currentAuthCID).child('avatarUrl').remove();
+  renderProfile();
+  renderSidebar();
+});
+
+clearBannerBtn.addEventListener('click', async () => {
+  if (!currentAuthCID) return;
+  await usersRef.child(currentAuthCID).child('bannerUrl').remove();
+  renderProfile();
+  updateTopBarInfo();
+});
+
+function handleProfileMediaUpload(file, fieldName) {
+  if (!currentAuthCID) return;
+
+  // Ограничение: до 2 МБ на файл для надежной записи в Firebase RTDB
+  const maxBytes = 2 * 1024 * 1024;
+  if (file.size > maxBytes) {
+    alert('Файл слишком большой! Пожалуйста, выберите гифку или фото весом до 2 МБ.');
+    return;
+  }
+
+  // Читаем напрямую как DataURL без Canvas, чтобы полностью сохранить анимацию GIF
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64Data = e.target.result;
+    await usersRef.child(currentAuthCID).update({ [fieldName]: base64Data });
+    renderProfile();
+    renderSidebar();
+    if (fieldName === 'bannerUrl') {
+      updateTopBarInfo();
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
 // ==================== ТЕМЫ И МАСШТАБ ====================
 
 function initThemeAndScale() {
@@ -2258,6 +2362,26 @@ function renderProfile() {
   myDisplayNameEl.textContent = myName;
   myFixedCidEl.textContent = isHidden ? 'CID: [СКРЫТ]' : currentAuthCID;
   hideCidCheckbox.checked = !!isHidden;
+
+  // Мини-аватарка в профиле сайдбара
+  if (userObj.avatarUrl) {
+    myMiniAvatarEl.style.backgroundImage = `url('${userObj.avatarUrl}')`;
+  } else {
+    myMiniAvatarEl.style.backgroundImage = 'none';
+  }
+
+  // Превью в модалке настроек
+  if (userObj.avatarUrl) {
+    settingsAvatarPreview.style.backgroundImage = `url('${userObj.avatarUrl}')`;
+  } else {
+    settingsAvatarPreview.style.backgroundImage = 'none';
+  }
+
+  if (userObj.bannerUrl) {
+    settingsBannerPreview.style.backgroundImage = `url('${userObj.bannerUrl}')`;
+  } else {
+    settingsBannerPreview.style.backgroundImage = 'none';
+  }
 }
 
 myFixedCidEl.addEventListener('click', () => {

@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#000000">
 
-  <link rel="stylesheet" href="css/main.css?v=3">
+  <link rel="stylesheet" href="css/main.css?v=4">
 </head>
 <body>
 
@@ -33,9 +33,12 @@
     <!-- Левая панель (список чатов и поиск) -->
     <aside class="sidebar" id="app-sidebar">
       <div class="sidebar-top">
-        <div class="user-profile">
-          <div class="user-display-name" id="my-display-name">---</div>
-          <div class="user-fixed-cid" id="my-fixed-cid" title="Нажмите, чтобы скопировать">CID: ---</div>
+        <div class="user-profile-header">
+          <div class="user-avatar-mini" id="my-mini-avatar"></div>
+          <div class="user-profile">
+            <div class="user-display-name" id="my-display-name">---</div>
+            <div class="user-fixed-cid" id="my-fixed-cid" title="Нажмите, чтобы скопировать">CID: ---</div>
+          </div>
         </div>
         <button id="edit-name-btn">[ИЗМЕНИТЬ]</button>
       </div>
@@ -77,9 +80,13 @@
 
     <!-- Область чата -->
     <main class="chat-area" id="app-chat-area">
+      <!-- Баннер шапки чата (заполняется баннером собеседника или группы) -->
+      <div id="chat-topbar-banner-bg" class="chat-topbar-banner-bg"></div>
+
       <div class="chat-topbar">
         <div class="chat-topbar-left">
           <button id="mobile-back-btn" class="mobile-back-btn">←</button>
+          <div class="chat-header-avatar" id="active-chat-avatar"></div>
           <div class="chat-header-info">
             <span id="active-peer-header">ВЫБЕРИТЕ ДИАЛОГ</span>
             <span id="active-group-subtitle" class="active-group-subtitle hidden">---</span>
@@ -295,12 +302,39 @@
     <img id="viewer-img" src="" alt="Изображение" />
   </div>
 
-  <!-- МОДАЛКА НАСТРОЕК -->
+  <!-- МОДАЛКА НАСТРОЕК (ВКЛЮЧАЯ АВАТАРКУ И БАННЕР) -->
   <div id="settings-modal" class="modal-overlay hidden">
     <div class="settings-window">
       <div class="settings-header">
-        <span>НАСТРОЙКИ</span>
+        <span>НАСТРОЙКИ ПРОФИЛЯ</span>
         <button id="settings-close-btn">[X]</button>
+      </div>
+
+      <!-- Кастомизация профиля: Баннер и Аватарка (поддержка GIF) -->
+      <div class="settings-section">
+        <label class="settings-label">ПРОФИЛЬ: БАННЕР И АВАТАРКА (GIF / ФОТО):</label>
+        
+        <div class="profile-preview-card" id="settings-banner-preview">
+          <div class="profile-preview-overlay"></div>
+          <div class="profile-avatar-preview-wrap">
+            <div class="profile-avatar-preview" id="settings-avatar-preview"></div>
+          </div>
+        </div>
+
+        <div class="profile-upload-actions">
+          <div class="upload-btn-group">
+            <input type="file" id="avatar-file-input" accept="image/*" class="hidden">
+            <button type="button" id="upload-avatar-btn" class="btn-secondary">СМЕНИТЬ АВУ</button>
+            <button type="button" id="clear-avatar-btn" class="btn-tiny-danger" title="Удалить аватар">✕</button>
+          </div>
+
+          <div class="upload-btn-group">
+            <input type="file" id="banner-file-input" accept="image/*" class="hidden">
+            <button type="button" id="upload-banner-btn" class="btn-secondary">СМЕНИТЬ БАННЕР</button>
+            <button type="button" id="clear-banner-btn" class="btn-tiny-danger" title="Удалить баннер">✕</button>
+          </div>
+        </div>
+        <div class="sub-hint-text">Поддерживаются анимированные GIF и фото до 2 МБ. Анимация проигрывается у всех участников.</div>
       </div>
 
       <!-- Приватность CID -->
@@ -417,6 +451,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
   
-  <script src="js/app.js?v=3"></script>
+  <script src="js/app.js?v=4"></script>
 </body>
 </html>

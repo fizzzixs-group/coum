@@ -235,6 +235,24 @@ html, body {
   gap: 8px;
 }
 
+.user-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.user-avatar-mini {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+}
+
 .user-profile {
   display: flex;
   flex-direction: column;
@@ -269,6 +287,7 @@ html, body {
   padding: 4px 6px;
   cursor: pointer;
   border-radius: 0;
+  flex-shrink: 0;
 }
 
 #edit-name-btn:hover {
@@ -346,6 +365,7 @@ html, body {
   border-color: var(--accent-color);
 }
 
+/* Заголовок секции сайдбара */
 .sidebar-section-header {
   padding: 10px 12px;
   display: flex;
@@ -374,13 +394,13 @@ html, body {
   color: var(--text-main);
   border: none;
   border-bottom: 1px solid var(--border-color);
-  padding: 12px 12px;
+  padding: 10px 12px;
   text-align: left;
   cursor: pointer;
   font-size: 12px;
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: center;
+  gap: 10px;
   border-radius: 0;
 }
 
@@ -395,9 +415,31 @@ html, body {
   border-left: 3px solid var(--accent-color);
 }
 
+.peer-avatar-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+}
+
+.peer-btn-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  flex: 1;
+}
+
 .peer-btn-name {
   font-weight: bold;
   color: var(--text-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .peer-btn-cid {
@@ -408,7 +450,7 @@ html, body {
 .peer-btn-tag {
   font-size: 9px;
   color: #fbbf24;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 /* Нижняя панель сайдбара с настройками и плюсиком */
@@ -520,8 +562,24 @@ html, body {
   position: relative;
 }
 
+/* Фоновый баннер собеседника в шапке */
+.chat-topbar-banner-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+  mask-image: linear-gradient(to bottom, black 30%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent 100%);
+}
+
 .chat-topbar {
-  min-height: 48px;
+  min-height: 52px;
   padding: 0 16px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
@@ -530,13 +588,28 @@ html, body {
   font-size: 13px;
   color: var(--text-bright);
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
 }
 
 .chat-topbar-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   overflow: hidden;
+}
+
+.chat-header-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
 }
 
 .chat-header-info {
@@ -597,6 +670,8 @@ html, body {
   font-size: 11px;
   cursor: pointer;
   transition: background 0.15s;
+  position: relative;
+  z-index: 2;
 }
 
 .pinned-bar:hover {
@@ -646,6 +721,8 @@ html, body {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  position: relative;
+  z-index: 2;
 }
 
 .antispam-text {
@@ -682,7 +759,7 @@ html, body {
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   font-size: 13px;
   -webkit-overflow-scrolling: touch;
 }
@@ -714,12 +791,13 @@ html, body {
   text-transform: uppercase;
 }
 
+/* Строка сообщения с мини-аватаркой */
 .msg-row {
-  line-height: 1.4;
-  word-break: break-word;
-  position: relative;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
   padding: 6px 8px;
-  border-radius: 2px;
+  border-radius: 3px;
   user-select: text;
   transition: background-color 0.4s ease, outline 0.4s ease;
 }
@@ -728,10 +806,32 @@ html, body {
   background: rgba(255, 255, 255, 0.02);
 }
 
-/* Анимация подсветки найденного сообщения */
 .msg-row.highlighted-msg {
   background: rgba(56, 189, 248, 0.15) !important;
   outline: 1px solid #38bdf8;
+}
+
+.msg-avatar-col {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.msg-body-col {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.msg-meta-line {
+  margin-bottom: 2px;
 }
 
 .msg-time {
@@ -762,8 +862,7 @@ html, body {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-top: 4px;
-  padding-left: 2px;
+  margin-top: 5px;
 }
 
 .reaction-badge {
@@ -902,6 +1001,70 @@ html, body {
 .message-form button[type="submit"]:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+/* ==================== КАСТОМИЗАЦИЯ ПРОФИЛЯ В НАСТРОЙКАХ ==================== */
+.profile-preview-card {
+  width: 100%;
+  height: 95px;
+  background: #141619;
+  border: 1px solid var(--border-color);
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding: 10px 14px;
+}
+
+.profile-preview-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.profile-avatar-preview-wrap {
+  position: relative;
+  z-index: 1;
+}
+
+.profile-avatar-preview {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  border: 2px solid var(--accent-color);
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.profile-upload-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.upload-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-tiny-danger {
+  background: #450a0a;
+  border: 1px solid #7f1d1d;
+  color: #f87171;
+  padding: 8px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.btn-tiny-danger:hover {
+  background: #7f1d1d;
+  color: #fff;
 }
 
 /* ==================== МОДАЛКИ ГРУПП ==================== */
