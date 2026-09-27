@@ -346,7 +346,6 @@ html, body {
   border-color: var(--accent-color);
 }
 
-/* Заголовок секции сайдбара */
 .sidebar-section-header {
   padding: 10px 12px;
   display: flex;
@@ -416,16 +415,21 @@ html, body {
 .sidebar-bottom {
   padding: 10px;
   border-top: 1px solid var(--border-color);
+  width: 100%;
 }
 
 .sidebar-actions-row {
-  display: flex;
-  gap: 8px;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  gap: 8px !important;
   position: relative;
+  width: 100%;
 }
 
 .sidebar-settings-btn {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   background: var(--bg-input);
   color: var(--text-main);
   border: 1px solid var(--border-color);
@@ -443,10 +447,13 @@ html, body {
 .add-action-wrapper {
   position: relative;
   display: flex;
+  flex: 0 0 42px;
 }
 
 .sidebar-plus-btn {
   width: 42px;
+  height: 100%;
+  min-height: 36px;
   background: var(--bg-input);
   color: var(--text-bright);
   border: 1px solid var(--border-color);
@@ -457,7 +464,6 @@ html, body {
   align-items: center;
   justify-content: center;
   border-radius: 0;
-  transition: background 0.15s, border-color 0.15s;
 }
 
 .sidebar-plus-btn:hover, .sidebar-plus-btn.active {
@@ -589,6 +595,12 @@ html, body {
   border-bottom: 1px solid var(--border-color);
   padding: 6px 16px;
   font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.pinned-bar:hover {
+  background: var(--bg-hover);
 }
 
 .pinned-info {
@@ -597,6 +609,7 @@ html, body {
   gap: 8px;
   overflow: hidden;
   white-space: nowrap;
+  flex: 1;
 }
 
 .pinned-label {
@@ -705,13 +718,20 @@ html, body {
   line-height: 1.4;
   word-break: break-word;
   position: relative;
-  padding: 4px 6px;
+  padding: 6px 8px;
   border-radius: 2px;
   user-select: text;
+  transition: background-color 0.4s ease, outline 0.4s ease;
 }
 
 .msg-row:hover {
   background: rgba(255, 255, 255, 0.02);
+}
+
+/* Анимация подсветки найденного сообщения */
+.msg-row.highlighted-msg {
+  background: rgba(56, 189, 248, 0.15) !important;
+  outline: 1px solid #38bdf8;
 }
 
 .msg-time {
@@ -1086,6 +1106,33 @@ html, body {
   font-size: 11px;
   color: var(--text-muted);
   line-height: 1.4;
+}
+
+/* Чекбокс скрытия CID в настройках */
+.privacy-toggle-box {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--text-bright);
+  font-size: 12px;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-color);
+  cursor: pointer;
 }
 
 /* ==================== КОНТЕКСТНОЕ МЕНЮ ==================== */

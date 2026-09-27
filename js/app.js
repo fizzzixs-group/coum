@@ -198,6 +198,7 @@ const cancelEditBtn = document.getElementById('cancel-edit-btn');
 
 // Контекстное меню
 const msgContextMenu = document.getElementById('msg-context-menu');
+const ctxCopyBtn = document.getElementById('ctx-copy-btn');
 const ctxEditBtn = document.getElementById('ctx-edit-btn');
 const ctxPinBothBtn = document.getElementById('ctx-pin-both-btn');
 const ctxPinSelfBtn = document.getElementById('ctx-pin-self-btn');
@@ -237,6 +238,7 @@ const openSettingsBtn = document.getElementById('open-settings-btn');
 const settingsModal = document.getElementById('settings-modal');
 const settingsCloseBtn = document.getElementById('settings-close-btn');
 const settingsLogoutBtn = document.getElementById('settings-logout-btn');
+const hideCidCheckbox = document.getElementById('hide-cid-checkbox');
 const scaleButtons = document.querySelectorAll('.scale-btn');
 const themeButtons = document.querySelectorAll('.theme-select-btn');
 const applyCustomThemeBtn = document.getElementById('apply-custom-theme-btn');
@@ -327,12 +329,15 @@ function renderSidebar() {
     const lowerQuery = searchQuery.toLowerCase();
     const matchedCids = cloudCids.filter(cid => {
       if (cid === currentAuthCID) return false;
-      const userName = (cloudUsers[cid]?.name || '').toLowerCase();
+      const userObj = cloudUsers[cid] || {};
+      const userName = (userObj.name || '').toLowerCase();
       const cidLower = cid.toLowerCase();
 
       if (searchFilterMode === 'name') {
         return userName.includes(lowerQuery);
       } else {
+        // Если юзер скрыл CID, в поиске по CID он не отображается
+        if (userObj.hideCid) return false;
         return cidLower.includes(lowerQuery);
       }
     });
@@ -344,13 +349,16 @@ function renderSidebar() {
 
     matchedCids.forEach(peerCID => {
       const isAlreadyChat = !!myUserChats[peerCID];
-      const displayName = cloudUsers[peerCID]?.name || peerCID;
+      const peerObj = cloudUsers[peerCID] || {};
+      const displayName = peerObj.name || peerCID;
+      const cidLabel = peerObj.hideCid ? '[CID СКРЫТ]' : peerCID;
+
       const btn = document.createElement('button');
       btn.className = `peer-btn ${peerCID === activeTargetID ? 'active' : ''}`;
       
       btn.innerHTML = `
         <span class="peer-btn-name">${escapeHTML(displayName)}</span>
-        <span class="peer-btn-cid">${peerCID}</span>
+        <span class="peer-btn-cid">${cidLabel}</span>
         ${isAlreadyChat ? '<span class="peer-btn-tag">[УЖЕ В ЧАТАХ]</span>' : '<span class="peer-btn-tag" style="color:#38bdf8;">[НАЧАТЬ ДИАЛОГ]</span>'}
       `;
 
@@ -383,8 +391,10 @@ function renderSidebar() {
         }
       } else {
         if (!cloudCids.includes(targetId)) return;
-        displayName = cloudUsers[targetId]?.name || info.peerUsername || targetId;
-        subInfo = targetId;
+        const peerObj = cloudUsers[targetId] || {};
+        displayName = peerObj.name || info.peerUsername || targetId;
+        subInfo = peerObj.hideCid ? '[CID СКРЫТ]' : targetId;
+
         if (info.status === 'pending') {
           tagHTML = info.isInitiator ? '<span class="peer-btn-tag">[ОЖИДАНИЕ ОТВЕТА]</span>' : '<span class="peer-btn-tag" style="color:#ef4444;">[ЗАПРОС НА ПЕРЕПИСКУ]</span>';
         }
@@ -438,15 +448,17 @@ function updateTopBarInfo() {
     groupManageBtn.classList.remove('hidden');
     startCallBtn.classList.add('hidden');
   } else {
-    const name = cloudUsers[activeTargetID]?.name || activeTargetID;
-    activePeerHeaderEl.textContent = `${name} (${activeTargetID})`;
+    const peerObj = cloudUsers[activeTargetID] || {};
+    const name = peerObj.name || activeTargetID;
+    const cidLabel = peerObj.hideCid ? '[CID СКРЫТ]' : activeTargetID;
+    activePeerHeaderEl.textContent = `${name} (${cidLabel})`;
     activeGroupSubtitle.classList.add('hidden');
     groupManageBtn.classList.add('hidden');
     startCallBtn.classList.remove('hidden');
   }
 }
 
-// ==================== СЛУШАТЕЛИ ВЫБРАННОГО ЧАТА (ЛИЧКА / ГРУППА) ====================
+// ==================== СЛУШАТЕЛИ ВЫБРАННОГО ЧАТА ====================
 
 function detachCurrentChatListeners() {
   if (!activeTargetID) return;
@@ -480,7 +492,6 @@ function attachActiveChatListeners() {
   if (activeTargetType === 'group') {
     const groupRef = groupsRef.child(activeTargetID);
 
-    // 1. Мета группы
     currentMetaListener = groupRef.child('meta').on('value', (snap) => {
       const meta = snap.val();
       if (!meta) {
@@ -499,17 +510,14 @@ function attachActiveChatListeners() {
       updateGroupStatusUI();
     });
 
-    // 2. Закрепленное сообщение
     currentPinnedListener = groupRef.child('pinned').on('value', (snap) => {
       updatePinnedBarUI(snap.val());
     });
 
-    // 3. Сообщения
     currentMessagesListener = groupRef.child('messages').on('value', (snap) => {
       renderMessages(snap.val() || {});
     });
 
-    // 4. Участники
     currentGroupMembersListener = groupRef.child('members').on('value', (snap) => {
       const members = snap.val() || {};
       const count = Object.keys(members).length;
@@ -662,7 +670,6 @@ submitCreateGroupBtn.addEventListener('click', async () => {
 
   await groupsRef.child(newGID).set(groupData);
 
-  // Добавляем создателю в сайдбар
   await userChatsRef.child(currentAuthCID).child(newGID).set({
     type: 'group',
     title: groupTitle,
@@ -734,7 +741,6 @@ saveGroupNameBtn.addEventListener('click', async () => {
   alert('Название группы обновлено!');
 });
 
-// Выход из группы
 leaveGroupBtn.addEventListener('click', async () => {
   if (!confirm('Выйти из этой группы?')) return;
 
@@ -750,7 +756,6 @@ leaveGroupBtn.addEventListener('click', async () => {
   appScreen.classList.remove('chat-opened');
 });
 
-// Удаление группы владельцем
 deleteGroupBtn.addEventListener('click', async () => {
   if (!confirm('ВНИМАНИЕ! Группа и вся переписка будут удалены навсегда для всех участников. Удалить?')) return;
 
@@ -843,8 +848,11 @@ async function sendGroupInvite(targetCID) {
 
 // ==================== ЗАКРЕПЛЕНИЕ СООБЩЕНИЙ ====================
 
+let currentPinnedMsgId = null;
+
 function updatePinnedBarUI(cloudPinned) {
   if (cloudPinned && cloudPinned.text) {
+    currentPinnedMsgId = cloudPinned.id || null;
     pinnedTypeLabel.textContent = 'ЗАКРЕП (ДЛЯ ВСЕХ):';
     pinnedTextPreview.textContent = cloudPinned.text;
     pinnedBar.classList.remove('hidden');
@@ -853,21 +861,48 @@ function updatePinnedBarUI(cloudPinned) {
   }
 
   const localKey = activeTargetType === 'group' ? `coum_pinned_${activeTargetID}` : `coum_pinned_${getChatKey(currentAuthCID, activeTargetID)}`;
-  const localPinnedText = localStorage.getItem(localKey);
+  const localDataRaw = localStorage.getItem(localKey);
 
-  if (localPinnedText) {
-    pinnedTypeLabel.textContent = 'ЗАКРЕП (ДЛЯ СЕБЯ):';
-    pinnedTextPreview.textContent = localPinnedText;
+  if (localDataRaw) {
+    try {
+      const parsed = JSON.parse(localDataRaw);
+      currentPinnedMsgId = parsed.id || null;
+      pinnedTypeLabel.textContent = 'ЗАКРЕП (ДЛЯ СЕБЯ):';
+      pinnedTextPreview.textContent = parsed.text || '';
+    } catch(e) {
+      currentPinnedMsgId = null;
+      pinnedTypeLabel.textContent = 'ЗАКРЕП (ДЛЯ СЕБЯ):';
+      pinnedTextPreview.textContent = localDataRaw;
+    }
     pinnedBar.classList.remove('hidden');
     pinnedBar.dataset.pinnedType = 'self';
     return;
   }
 
+  currentPinnedMsgId = null;
   pinnedBar.classList.add('hidden');
   pinnedBar.dataset.pinnedType = '';
 }
 
-unpinBtn.addEventListener('click', async () => {
+// Клик по плашке закрепа — плавный переход к сообщению
+pinnedBar.addEventListener('click', (e) => {
+  if (e.target === unpinBtn || unpinBtn.contains(e.target)) return;
+  if (!currentPinnedMsgId) return;
+
+  const targetMsgEl = messagesContainer.querySelector(`[data-msg-id="${currentPinnedMsgId}"]`);
+  if (targetMsgEl) {
+    targetMsgEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    targetMsgEl.classList.add('highlighted-msg');
+    setTimeout(() => {
+      targetMsgEl.classList.remove('highlighted-msg');
+    }, 1500);
+  } else {
+    alert('Закрепленное сообщение не найдено в текущей истории.');
+  }
+});
+
+unpinBtn.addEventListener('click', async (e) => {
+  e.stopPropagation();
   if (!activeTargetID || !currentAuthCID) return;
   const type = pinnedBar.dataset.pinnedType;
 
@@ -1004,7 +1039,7 @@ function openContextMenu(x, y, msg) {
   msgContextMenu.classList.remove('hidden');
 
   const menuWidth = 200;
-  const menuHeight = 220;
+  const menuHeight = 240;
   let posX = x;
   let posY = y;
 
@@ -1016,7 +1051,9 @@ function openContextMenu(x, y, msg) {
 
   const isMine = msg.senderCid === currentAuthCID;
   const isText = !!msg.text;
+
   ctxEditBtn.style.display = (isMine && isText) ? 'block' : 'none';
+  ctxCopyBtn.style.display = isText ? 'block' : 'none';
 }
 
 function closeContextMenu() {
@@ -1028,6 +1065,18 @@ window.addEventListener('click', (e) => {
   if (!msgContextMenu.contains(e.target)) {
     closeContextMenu();
   }
+});
+
+// Скопировать текст сообщения
+ctxCopyBtn.addEventListener('click', () => {
+  if (!targetContextMessage || !targetContextMessage.text) return;
+  navigator.clipboard.writeText(targetContextMessage.text);
+  const oldText = ctxCopyBtn.textContent;
+  ctxCopyBtn.textContent = 'СКОПИРОВАНО!';
+  setTimeout(() => {
+    ctxCopyBtn.textContent = oldText;
+    closeContextMenu();
+  }, 900);
 });
 
 reactionEmojiButtons.forEach(btn => {
@@ -1089,7 +1138,10 @@ ctxPinSelfBtn.addEventListener('click', () => {
   const textToPin = targetContextMessage.text || '[Изображение]';
 
   const localKey = activeTargetType === 'group' ? `coum_pinned_${activeTargetID}` : `coum_pinned_${getChatKey(currentAuthCID, activeTargetID)}`;
-  localStorage.setItem(localKey, textToPin);
+  localStorage.setItem(localKey, JSON.stringify({
+    id: targetContextMessage.id,
+    text: textToPin
+  }));
   updatePinnedBarUI(null);
   closeContextMenu();
 });
@@ -1883,7 +1935,20 @@ function initThemeAndScale() {
   } else {
     applyTheme(savedTheme);
   }
+
+  const savedHideCid = localStorage.getItem('coum_hide_cid') === 'true';
+  hideCidCheckbox.checked = savedHideCid;
 }
+
+hideCidCheckbox.addEventListener('change', async (e) => {
+  const isHidden = e.target.checked;
+  localStorage.setItem('coum_hide_cid', isHidden);
+  if (currentAuthCID) {
+    await usersRef.child(currentAuthCID).update({ hideCid: isHidden });
+    renderProfile();
+    renderSidebar();
+  }
+});
 
 function applyScale(scaleVal) {
   document.documentElement.style.setProperty('--ui-scale', scaleVal);
@@ -2138,7 +2203,12 @@ async function attemptLogin(inputCID) {
       if (!initialName || !initialName.trim()) {
         initialName = cleanCID.slice(0, 8);
       }
-      await usersRef.child(cleanCID).set({ name: initialName.trim() });
+      await usersRef.child(cleanCID).set({ name: initialName.trim(), hideCid: false });
+    } else {
+      const data = userSnap.val();
+      if (data && typeof data.hideCid !== 'undefined') {
+        localStorage.setItem('coum_hide_cid', data.hideCid);
+      }
     }
 
     enterApp();
@@ -2181,9 +2251,13 @@ mobileBackBtn.addEventListener('click', () => {
 
 function renderProfile() {
   if (!currentAuthCID) return;
-  const myName = cloudUsers[currentAuthCID]?.name || currentAuthCID;
+  const userObj = cloudUsers[currentAuthCID] || {};
+  const myName = userObj.name || currentAuthCID;
+  const isHidden = userObj.hideCid || localStorage.getItem('coum_hide_cid') === 'true';
+
   myDisplayNameEl.textContent = myName;
-  myFixedCidEl.textContent = currentAuthCID;
+  myFixedCidEl.textContent = isHidden ? 'CID: [СКРЫТ]' : currentAuthCID;
+  hideCidCheckbox.checked = !!isHidden;
 }
 
 myFixedCidEl.addEventListener('click', () => {

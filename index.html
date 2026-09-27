@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#000000">
 
-  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/main.css?v=3">
 </head>
 <body>
 
@@ -67,7 +67,6 @@
           <button type="button" id="open-settings-btn" class="sidebar-settings-btn">[НАСТРОЙКИ]</button>
           <div class="add-action-wrapper">
             <button type="button" id="sidebar-plus-btn" class="sidebar-plus-btn" title="Создать...">+</button>
-            <!-- Выпадающее меню по клику на плюсик -->
             <div id="plus-dropdown-menu" class="plus-dropdown-menu hidden">
               <button type="button" id="dropdown-create-group-btn" class="dropdown-item">👥 Создать группу</button>
             </div>
@@ -89,13 +88,13 @@
         <div class="chat-topbar-right">
           <!-- Кнопка участников / настроек группы -->
           <button id="group-manage-btn" class="call-action-btn hidden" title="Настройки группы">👥 ИНФО</button>
-          <!-- Кнопка голосового звонка (только для личных диалогов) -->
+          <!-- Кнопка голосового звонка -->
           <button id="start-call-btn" class="call-action-btn" title="Голосовой звонок">📞</button>
         </div>
       </div>
 
-      <!-- Плашка закрепленного сообщения -->
-      <div id="pinned-bar" class="pinned-bar hidden">
+      <!-- Плашка закрепленного сообщения (кликабельна) -->
+      <div id="pinned-bar" class="pinned-bar hidden" title="Нажмите, чтобы перейти к сообщению">
         <div class="pinned-info">
           <span class="pinned-label" id="pinned-type-label">ЗАКРЕП:</span>
           <span class="pinned-text" id="pinned-text-preview">---</span>
@@ -103,7 +102,7 @@
         <button id="unpin-btn" class="unpin-action-btn" title="Открепить сообщение">✕</button>
       </div>
 
-      <!-- Баннер антиспама и инвайтов (Личка или Группа) -->
+      <!-- Баннер антиспама и инвайтов -->
       <div id="antispam-request-banner" class="antispam-banner hidden">
         <div class="antispam-text" id="antispam-banner-text">Новый контакт отправил запрос на переписку.</div>
         <div class="antispam-actions">
@@ -208,6 +207,7 @@
       <span class="reaction-emoji-btn" data-emoji="👀">👀</span>
     </div>
     <div class="context-menu-divider"></div>
+    <button type="button" class="context-menu-item" id="ctx-copy-btn">Скопировать текст</button>
     <button type="button" class="context-menu-item" id="ctx-edit-btn">Изменить</button>
     <button type="button" class="context-menu-item" id="ctx-pin-both-btn">Закрепить для всех</button>
     <button type="button" class="context-menu-item" id="ctx-pin-self-btn">Закрепить для себя</button>
@@ -301,6 +301,18 @@
       <div class="settings-header">
         <span>НАСТРОЙКИ</span>
         <button id="settings-close-btn">[X]</button>
+      </div>
+
+      <!-- Приватность CID -->
+      <div class="settings-section">
+        <label class="settings-label">ПРИВАТНОСТЬ И БЕЗОПАСНОСТЬ:</label>
+        <div class="privacy-toggle-box">
+          <label class="checkbox-label" for="hide-cid-checkbox">
+            <input type="checkbox" id="hide-cid-checkbox">
+            <span>СКРЫВАТЬ СВОЙ CID В ПРОФИЛЕ И ПОИСКЕ</span>
+          </label>
+          <div class="sub-hint-text">Ваш CID не будет виден в профиле, и вас нельзя будет найти по точному CID. Вход в аккаунт по нему по-прежнему работает.</div>
+        </div>
       </div>
 
       <div class="settings-section">
@@ -405,6 +417,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
   
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=3"></script>
 </body>
 </html>
