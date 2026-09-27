@@ -21,6 +21,7 @@ const chatsRef = db.ref('chats');
 const groupsRef = db.ref('groups');
 const userChatsRef = db.ref('user_chats');
 const callsRef = db.ref('calls');
+const groupCallsRef = db.ref('group_calls');
 
 let cloudCids = [];
 let cloudCidsKeys = {};
@@ -38,6 +39,7 @@ let currentMetaListener = null;
 let currentMessagesListener = null;
 let currentPinnedListener = null;
 let currentGroupMembersListener = null;
+let currentGroupVoiceBannerListener = null;
 
 // Поиск
 let searchFilterMode = 'name'; // 'name' | 'cid'
@@ -171,7 +173,6 @@ const plusDropdownMenu = document.getElementById('plus-dropdown-menu');
 const dropdownCreateGroupBtn = document.getElementById('dropdown-create-group-btn');
 
 // Чат
-const chatTopbarBannerBg = document.getElementById('chat-topbar-banner-bg');
 const activeChatAvatar = document.getElementById('active-chat-avatar');
 const activePeerHeaderEl = document.getElementById('active-peer-header');
 const activeGroupSubtitle = document.getElementById('active-group-subtitle');
@@ -184,6 +185,21 @@ const sendMsgBtn = document.getElementById('send-msg-btn');
 const attachBtn = document.getElementById('attach-btn');
 const imageFileInput = document.getElementById('image-file-input');
 const startCallBtn = document.getElementById('start-call-btn');
+const startGroupVoiceBtn = document.getElementById('start-group-voice-btn');
+
+// Групповой войс плашка
+const groupVoiceBanner = document.getElementById('group-voice-banner');
+const voiceBannerCount = document.getElementById('voice-banner-count');
+const joinGroupVoiceBtn = document.getElementById('join-group-voice-btn');
+
+// Модалка группового войса
+const groupVoiceModal = document.getElementById('group-voice-modal');
+const voiceModalGroupTitle = document.getElementById('voice-modal-group-title');
+const voiceModalCount = document.getElementById('voice-modal-count');
+const groupVoiceGrid = document.getElementById('group-voice-grid');
+const groupVoiceMuteBtn = document.getElementById('group-voice-mute-btn');
+const groupVoiceLeaveBtn = document.getElementById('group-voice-leave-btn');
+const groupAudioStreams = document.getElementById('group-audio-streams');
 
 // Антиспам и Закреп
 const antispamRequestBanner = document.getElementById('antispam-request-banner');
@@ -236,19 +252,15 @@ const imageViewerModal = document.getElementById('image-viewer-modal');
 const viewerImg = document.getElementById('viewer-img');
 const closeViewerBtn = document.getElementById('close-viewer-btn');
 
-// Настройки, аватарка и баннер
+// Настройки и аватарка
 const openSettingsBtn = document.getElementById('open-settings-btn');
 const settingsModal = document.getElementById('settings-modal');
 const settingsCloseBtn = document.getElementById('settings-close-btn');
 const settingsLogoutBtn = document.getElementById('settings-logout-btn');
-const settingsBannerPreview = document.getElementById('settings-banner-preview');
 const settingsAvatarPreview = document.getElementById('settings-avatar-preview');
 const avatarFileInput = document.getElementById('avatar-file-input');
 const uploadAvatarBtn = document.getElementById('upload-avatar-btn');
 const clearAvatarBtn = document.getElementById('clear-avatar-btn');
-const bannerFileInput = document.getElementById('banner-file-input');
-const uploadBannerBtn = document.getElementById('upload-banner-btn');
-const clearBannerBtn = document.getElementById('clear-banner-btn');
 
 const hideCidCheckbox = document.getElementById('hide-cid-checkbox');
 const scaleButtons = document.querySelectorAll('.scale-btn');
@@ -459,8 +471,9 @@ function updateTopBarInfo() {
     activeGroupSubtitle.classList.add('hidden');
     groupManageBtn.classList.add('hidden');
     startCallBtn.classList.remove('hidden');
-    chatTopbarBannerBg.style.backgroundImage = 'none';
+    startGroupVoiceBtn.classList.add('hidden');
     activeChatAvatar.style.backgroundImage = 'none';
+    groupVoiceBanner.classList.add('hidden');
     return;
   }
 
@@ -471,7 +484,7 @@ function updateTopBarInfo() {
     activeGroupSubtitle.classList.remove('hidden');
     groupManageBtn.classList.remove('hidden');
     startCallBtn.classList.add('hidden');
-    chatTopbarBannerBg.style.backgroundImage = 'none';
+    startGroupVoiceBtn.classList.remove('hidden');
     activeChatAvatar.style.backgroundImage = 'none';
   } else {
     const peerObj = cloudUsers[activeTargetID] || {};
@@ -481,18 +494,13 @@ function updateTopBarInfo() {
     activeGroupSubtitle.classList.add('hidden');
     groupManageBtn.classList.add('hidden');
     startCallBtn.classList.remove('hidden');
+    startGroupVoiceBtn.classList.add('hidden');
+    groupVoiceBanner.classList.add('hidden');
 
-    // Рендер аватарки и баннера собеседника в шапке чата
     if (peerObj.avatarUrl) {
       activeChatAvatar.style.backgroundImage = `url('${peerObj.avatarUrl}')`;
     } else {
       activeChatAvatar.style.backgroundImage = 'none';
-    }
-
-    if (peerObj.bannerUrl) {
-      chatTopbarBannerBg.style.backgroundImage = `url('${peerObj.bannerUrl}')`;
-    } else {
-      chatTopbarBannerBg.style.backgroundImage = 'none';
     }
   }
 }
@@ -508,6 +516,7 @@ function detachCurrentChatListeners() {
     if (currentMessagesListener) groupRef.child('messages').off('value', currentMessagesListener);
     if (currentPinnedListener) groupRef.child('pinned').off('value', currentPinnedListener);
     if (currentGroupMembersListener) groupRef.child('members').off('value', currentGroupMembersListener);
+    if (currentGroupVoiceBannerListener) groupCallsRef.child(activeTargetID).child('participants').off('value', currentGroupVoiceBannerListener);
   } else {
     const chatKey = getChatKey(currentAuthCID, activeTargetID);
     const chatRef = chatsRef.child(chatKey);
@@ -520,6 +529,7 @@ function detachCurrentChatListeners() {
   currentMessagesListener = null;
   currentPinnedListener = null;
   currentGroupMembersListener = null;
+  currentGroupVoiceBannerListener = null;
 }
 
 function attachActiveChatListeners() {
@@ -563,6 +573,18 @@ function attachActiveChatListeners() {
       activeGroupSubtitle.textContent = `${activeTargetID} • ${count} уч.`;
       if (!members[currentAuthCID]) {
         updateGroupStatusUI();
+      }
+    });
+
+    // Слушатель активности группового голосового чата
+    currentGroupVoiceBannerListener = groupCallsRef.child(activeTargetID).child('participants').on('value', (snap) => {
+      const parts = snap.val() || {};
+      const count = Object.keys(parts).length;
+      if (count > 0) {
+        voiceBannerCount.textContent = count;
+        groupVoiceBanner.classList.remove('hidden');
+      } else {
+        groupVoiceBanner.classList.add('hidden');
       }
     });
 
@@ -626,12 +648,14 @@ function updateGroupStatusUI() {
     messageInput.placeholder = 'Примите приглашение, чтобы писать в группу...';
     sendMsgBtn.disabled = true;
     attachBtn.disabled = true;
+    startGroupVoiceBtn.disabled = true;
   } else {
     antispamRequestBanner.classList.add('hidden');
     messageInput.disabled = false;
     messageInput.placeholder = 'Сообщение в группу...';
     sendMsgBtn.disabled = false;
     attachBtn.disabled = false;
+    startGroupVoiceBtn.disabled = false;
   }
 }
 
@@ -810,6 +834,7 @@ deleteGroupBtn.addEventListener('click', async () => {
   }
 
   await groupsRef.child(gid).remove();
+  await groupCallsRef.child(gid).remove();
 
   groupManageModal.classList.add('hidden');
   activeTargetID = null;
@@ -994,7 +1019,6 @@ function renderMessages(messagesData) {
     const authorName = isSelf ? 'Я' : (msg.senderName || authorUser.name || msg.senderCid);
     const timeFormatted = formatMessageTime(isoDate);
 
-    // Аватарка автора сообщения
     const senderAvatarUrl = authorUser.avatarUrl || '';
     const avatarStyle = senderAvatarUrl ? `background-image: url('${senderAvatarUrl}');` : '';
 
@@ -1315,7 +1339,7 @@ messageForm.addEventListener('submit', (e) => {
   }
 });
 
-// ==================== WebRTC АУДИОЗВОНКИ ====================
+// ==================== WebRTC 1-НА-1 АУДИОЗВОНКИ ====================
 
 const remoteAudio = document.getElementById('remote-audio');
 const incomingCallModal = document.getElementById('incoming-call-modal');
@@ -1339,7 +1363,6 @@ let callDurationSeconds = 0;
 let isMuted = false;
 
 let audioCtx = null;
-let ringOscillator = null;
 let ringInterval = null;
 
 function playRingTone(type = 'dialing') {
@@ -1629,6 +1652,215 @@ toggleMuteBtn.addEventListener('click', () => {
   });
   toggleMuteBtn.textContent = isMuted ? 'МИКРОФОН: ВЫКЛ' : 'МИКРОФОН: ВКЛ';
 });
+
+// ==================== ГРУППОВЫЕ ГОЛОСОВЫЕ ЗВОНКИ (FULL MESH WEBRTC) ====================
+
+let activeGroupVoiceGID = null;
+let groupLocalStream = null;
+let groupPeerConnections = {}; // { [peerCid]: RTCPeerConnection }
+let isGroupVoiceMuted = false;
+
+startGroupVoiceBtn.addEventListener('click', () => {
+  if (!activeTargetID || activeTargetType !== 'group') return;
+  joinGroupVoiceCall(activeTargetID);
+});
+
+joinGroupVoiceBtn.addEventListener('click', () => {
+  if (!activeTargetID || activeTargetType !== 'group') return;
+  joinGroupVoiceCall(activeTargetID);
+});
+
+groupVoiceLeaveBtn.addEventListener('click', () => {
+  leaveGroupVoiceCall();
+});
+
+groupVoiceMuteBtn.addEventListener('click', () => {
+  if (!groupLocalStream) return;
+  isGroupVoiceMuted = !isGroupVoiceMuted;
+  groupLocalStream.getAudioTracks().forEach(track => {
+    track.enabled = !isGroupVoiceMuted;
+  });
+  groupVoiceMuteBtn.textContent = isGroupVoiceMuted ? 'МИКРОФОН: ВЫКЛ' : 'МИКРОФОН: ВКЛ';
+});
+
+async function joinGroupVoiceCall(gid) {
+  try {
+    groupLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch (err) {
+    alert('Не удалось получить доступ к микрофону для голосового чата!');
+    return;
+  }
+
+  activeGroupVoiceGID = gid;
+  const groupTitle = myUserChats[gid]?.title || 'Группа';
+  voiceModalGroupTitle.textContent = groupTitle;
+  groupVoiceModal.classList.remove('hidden');
+  isGroupVoiceMuted = false;
+  groupVoiceMuteBtn.textContent = 'МИКРОФОН: ВКЛ';
+
+  const myVoiceRef = groupCallsRef.child(gid).child('participants').child(currentAuthCID);
+  await myVoiceRef.set({
+    cid: currentAuthCID,
+    name: cloudUsers[currentAuthCID]?.name || currentAuthCID,
+    joinedAt: firebase.database.ServerValue.TIMESTAMP
+  });
+  myVoiceRef.onDisconnect().remove();
+
+  // Слушаем список участников в войсе
+  groupCallsRef.child(gid).child('participants').on('value', async (snap) => {
+    const participants = snap.val() || {};
+    renderGroupVoiceGrid(participants);
+
+    // Поднимаем соединения со всеми остальными участниками
+    const peerCids = Object.keys(participants).filter(cid => cid !== currentAuthCID);
+
+    // Удаляем отвалившихся
+    Object.keys(groupPeerConnections).forEach(pCid => {
+      if (!peerCids.includes(pCid)) {
+        closePeerMeshConnection(pCid);
+      }
+    });
+
+    // Для каждого нового участника создаем Mesh-канал (инициирует тот, чей CID лексикографически больше)
+    peerCids.forEach(async (peerCid) => {
+      if (!groupPeerConnections[peerCid]) {
+        initMeshConnection(peerCid, currentAuthCID > peerCid);
+      }
+    });
+  });
+
+  // Слушаем входящие сигналы (offers/answers) для меня в этой группе
+  groupCallsRef.child(gid).child('signals').child(currentAuthCID).on('child_added', async (snap) => {
+    const signal = snap.val();
+    if (!signal) return;
+    const fromCid = signal.from;
+
+    let pc = groupPeerConnections[fromCid];
+    if (!pc) {
+      pc = initMeshConnection(fromCid, false);
+    }
+
+    if (signal.type === 'offer') {
+      await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      await groupCallsRef.child(gid).child('signals').child(fromCid).push({
+        from: currentAuthCID,
+        type: 'answer',
+        data: answer
+      });
+    } else if (signal.type === 'answer') {
+      if (pc.signalingState === 'have-local-offer') {
+        await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+      }
+    } else if (signal.type === 'candidate') {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(signal.data));
+      } catch (e) {}
+    }
+
+    snap.ref.remove();
+  });
+}
+
+function initMeshConnection(peerCid, shouldCreateOffer) {
+  const pc = new RTCPeerConnection(rtcConfig);
+  groupPeerConnections[peerCid] = pc;
+
+  groupLocalStream.getTracks().forEach(track => {
+    pc.addTrack(track, groupLocalStream);
+  });
+
+  pc.ontrack = (event) => {
+    let audioEl = document.getElementById(`audio-peer-${peerCid}`);
+    if (!audioEl) {
+      audioEl = document.createElement('audio');
+      audioEl.id = `audio-peer-${peerCid}`;
+      audioEl.autoplay = true;
+      audioEl.playsInline = true;
+      groupAudioStreams.appendChild(audioEl);
+    }
+    audioEl.srcObject = event.streams[0];
+  };
+
+  pc.onicecandidate = (event) => {
+    if (event.candidate && activeGroupVoiceGID) {
+      groupCallsRef.child(activeGroupVoiceGID).child('signals').child(peerCid).push({
+        from: currentAuthCID,
+        type: 'candidate',
+        data: event.candidate
+      });
+    }
+  };
+
+  if (shouldCreateOffer) {
+    pc.createOffer().then(offer => {
+      return pc.setLocalDescription(offer);
+    }).then(() => {
+      if (activeGroupVoiceGID) {
+        groupCallsRef.child(activeGroupVoiceGID).child('signals').child(peerCid).push({
+          from: currentAuthCID,
+          type: 'offer',
+          data: pc.localDescription
+        });
+      }
+    });
+  }
+
+  return pc;
+}
+
+function closePeerMeshConnection(peerCid) {
+  if (groupPeerConnections[peerCid]) {
+    groupPeerConnections[peerCid].close();
+    delete groupPeerConnections[peerCid];
+  }
+  const audioEl = document.getElementById(`audio-peer-${peerCid}`);
+  if (audioEl) audioEl.remove();
+}
+
+function renderGroupVoiceGrid(participants) {
+  groupVoiceGrid.innerHTML = '';
+  const entries = Object.entries(participants);
+  voiceModalCount.textContent = `${entries.length}/5`;
+
+  entries.forEach(([cid, info]) => {
+    const userObj = cloudUsers[cid] || {};
+    const name = isSelf = (cid === currentAuthCID) ? `${info.name} (Вы)` : info.name;
+    const avatarUrl = userObj.avatarUrl || '';
+    const avatarStyle = avatarUrl ? `background-image: url('${avatarUrl}');` : '';
+
+    const card = document.createElement('div');
+    card.className = 'voice-user-card';
+    card.innerHTML = `
+      <div class="voice-user-avatar" style="${avatarStyle}"></div>
+      <div class="voice-user-name">${escapeHTML(name)}</div>
+      <div class="voice-user-status">${cid === currentAuthCID ? 'В эфире' : 'Слушает'}</div>
+    `;
+    groupVoiceGrid.appendChild(card);
+  });
+}
+
+async function leaveGroupVoiceCall() {
+  if (activeGroupVoiceGID && currentAuthCID) {
+    await groupCallsRef.child(activeGroupVoiceGID).child('participants').child(currentAuthCID).remove();
+    groupCallsRef.child(activeGroupVoiceGID).child('participants').off();
+    groupCallsRef.child(activeGroupVoiceGID).child('signals').child(currentAuthCID).off();
+  }
+
+  Object.keys(groupPeerConnections).forEach(pCid => closePeerMeshConnection(pCid));
+  groupPeerConnections = {};
+
+  if (groupLocalStream) {
+    groupLocalStream.getTracks().forEach(t => t.stop());
+    groupLocalStream = null;
+  }
+
+  groupAudioStreams.innerHTML = '';
+  groupVoiceModal.classList.add('hidden');
+  activeGroupVoiceGID = null;
+}
 
 // ==================== ВСТРОЕННЫЙ РЕДАКТОР ИЗОБРАЖЕНИЙ ====================
 
@@ -1969,23 +2201,29 @@ window.addEventListener('paste', (e) => {
   }
 });
 
-// ==================== КАСТОМИЗАЦИЯ ПРОФИЛЯ (АВАТАРКИ И БАННЕРЫ С ПОДДЕРЖКОЙ GIF) ====================
+// ==================== КАСТОМИЗАЦИЯ АВАТАРКИ (ПОДДЕРЖКА GIF) ====================
 
 uploadAvatarBtn.addEventListener('click', () => avatarFileInput.click());
-uploadBannerBtn.addEventListener('click', () => bannerFileInput.click());
 
 avatarFileInput.addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  handleProfileMediaUpload(file, 'avatarUrl');
-  avatarFileInput.value = '';
-});
 
-bannerFileInput.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  handleProfileMediaUpload(file, 'bannerUrl');
-  bannerFileInput.value = '';
+  const maxBytes = 2 * 1024 * 1024;
+  if (file.size > maxBytes) {
+    alert('Файл слишком большой! Выберите гифку или фото до 2 МБ.');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64Data = e.target.result;
+    await usersRef.child(currentAuthCID).update({ avatarUrl: base64Data });
+    renderProfile();
+    renderSidebar();
+  };
+  reader.readAsDataURL(file);
+  avatarFileInput.value = '';
 });
 
 clearAvatarBtn.addEventListener('click', async () => {
@@ -1994,37 +2232,6 @@ clearAvatarBtn.addEventListener('click', async () => {
   renderProfile();
   renderSidebar();
 });
-
-clearBannerBtn.addEventListener('click', async () => {
-  if (!currentAuthCID) return;
-  await usersRef.child(currentAuthCID).child('bannerUrl').remove();
-  renderProfile();
-  updateTopBarInfo();
-});
-
-function handleProfileMediaUpload(file, fieldName) {
-  if (!currentAuthCID) return;
-
-  // Ограничение: до 2 МБ на файл для надежной записи в Firebase RTDB
-  const maxBytes = 2 * 1024 * 1024;
-  if (file.size > maxBytes) {
-    alert('Файл слишком большой! Пожалуйста, выберите гифку или фото весом до 2 МБ.');
-    return;
-  }
-
-  // Читаем напрямую как DataURL без Canvas, чтобы полностью сохранить анимацию GIF
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const base64Data = e.target.result;
-    await usersRef.child(currentAuthCID).update({ [fieldName]: base64Data });
-    renderProfile();
-    renderSidebar();
-    if (fieldName === 'bannerUrl') {
-      updateTopBarInfo();
-    }
-  };
-  reader.readAsDataURL(file);
-}
 
 // ==================== ТЕМЫ И МАСШТАБ ====================
 
@@ -2130,6 +2337,7 @@ settingsLogoutBtn.addEventListener('click', () => {
 
 function performLogout() {
   detachCurrentChatListeners();
+  leaveGroupVoiceCall();
   if (currentAuthCID) {
     userChatsRef.child(currentAuthCID).off();
   }
@@ -2363,24 +2571,12 @@ function renderProfile() {
   myFixedCidEl.textContent = isHidden ? 'CID: [СКРЫТ]' : currentAuthCID;
   hideCidCheckbox.checked = !!isHidden;
 
-  // Мини-аватарка в профиле сайдбара
   if (userObj.avatarUrl) {
     myMiniAvatarEl.style.backgroundImage = `url('${userObj.avatarUrl}')`;
-  } else {
-    myMiniAvatarEl.style.backgroundImage = 'none';
-  }
-
-  // Превью в модалке настроек
-  if (userObj.avatarUrl) {
     settingsAvatarPreview.style.backgroundImage = `url('${userObj.avatarUrl}')`;
   } else {
+    myMiniAvatarEl.style.backgroundImage = 'none';
     settingsAvatarPreview.style.backgroundImage = 'none';
-  }
-
-  if (userObj.bannerUrl) {
-    settingsBannerPreview.style.backgroundImage = `url('${userObj.bannerUrl}')`;
-  } else {
-    settingsBannerPreview.style.backgroundImage = 'none';
   }
 }
 
