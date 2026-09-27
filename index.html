@@ -53,10 +53,13 @@
         </div>
       </div>
 
-      <!-- Заголовок секции списка -->
-      <div class="sidebar-section-title" id="sidebar-section-title">ДИАЛОГИ</div>
+      <!-- Заголовок секции списка + Кнопка создания группы -->
+      <div class="sidebar-section-header">
+        <span class="sidebar-section-title" id="sidebar-section-title">ДИАЛОГИ</span>
+        <button type="button" id="create-group-open-btn" class="create-group-btn" title="Создать группу">[+] ГРУППА</button>
+      </div>
 
-      <!-- Контейнер для активных чатов или результатов поиска -->
+      <!-- Контейнер для активных чатов, групп или результатов поиска -->
       <div class="peers-list" id="peers-list"></div>
 
       <div class="sidebar-bottom">
@@ -69,10 +72,17 @@
       <div class="chat-topbar">
         <div class="chat-topbar-left">
           <button id="mobile-back-btn" class="mobile-back-btn">←</button>
-          <span id="active-peer-header">ВЫБЕРИТЕ ДИАЛОГ</span>
+          <div class="chat-header-info">
+            <span id="active-peer-header">ВЫБЕРИТЕ ДИАЛОГ</span>
+            <span id="active-group-subtitle" class="active-group-subtitle hidden">---</span>
+          </div>
         </div>
-        <!-- Кнопка голосового звонка -->
-        <button id="start-call-btn" class="call-action-btn" title="Голосовой звонок">📞</button>
+        <div class="chat-topbar-right">
+          <!-- Кнопка участников / настроек группы -->
+          <button id="group-manage-btn" class="call-action-btn hidden" title="Настройки группы">👥 ИНФО</button>
+          <!-- Кнопка голосового звонка (только для личных диалогов) -->
+          <button id="start-call-btn" class="call-action-btn" title="Голосовой звонок">📞</button>
+        </div>
       </div>
 
       <!-- Плашка закрепленного сообщения -->
@@ -84,9 +94,9 @@
         <button id="unpin-btn" class="unpin-action-btn" title="Открепить сообщение">✕</button>
       </div>
 
-      <!-- Баннер антиспама (Запрос на переписку) -->
+      <!-- Баннер антиспама и инвайтов (Личка или Группа) -->
       <div id="antispam-request-banner" class="antispam-banner hidden">
-        <div class="antispam-text">Новый контакт отправил запрос на переписку.</div>
+        <div class="antispam-text" id="antispam-banner-text">Новый контакт отправил запрос на переписку.</div>
         <div class="antispam-actions">
           <button id="accept-chat-btn" class="antispam-btn-accept">ПРИНЯТЬ</button>
           <button id="reject-chat-btn" class="antispam-btn-reject">ОТКЛОНИТЬ</button>
@@ -111,9 +121,73 @@
     </main>
   </div>
 
+  <!-- МОДАЛКА СОЗДАНИЯ ГРУППЫ -->
+  <div id="create-group-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <span>СОЗДАНИЕ НОВОЙ ГРУППЫ</span>
+        <button type="button" class="modal-close-btn" id="close-create-group-btn">[X]</button>
+      </div>
+      <div class="modal-card-body">
+        <label class="input-field-label">НАЗВАНИЕ ГРУППЫ:</label>
+        <input type="text" id="new-group-name-input" class="text-input" placeholder="Введите название..." autocomplete="off" maxlength="32">
+      </div>
+      <div class="modal-card-actions">
+        <button type="button" id="submit-create-group-btn" class="btn-primary">СОЗДАТЬ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА УПРАВЛЕНИЯ ГРУППОЙ -->
+  <div id="group-manage-modal" class="modal-overlay hidden">
+    <div class="modal-card large">
+      <div class="modal-card-header">
+        <span id="group-manage-title">ИНФОРМАЦИЯ О ГРУППЕ</span>
+        <button type="button" class="modal-close-btn" id="close-group-manage-btn">[X]</button>
+      </div>
+      <div class="modal-card-body">
+        <div class="group-gid-badge" id="group-manage-gid" title="Кликните для копирования">GID: ---</div>
+        
+        <div class="settings-section" id="group-rename-section">
+          <label class="input-field-label">НАЗВАНИЕ ГРУППЫ:</label>
+          <div class="input-row-flex">
+            <input type="text" id="group-rename-input" class="text-input" autocomplete="off" maxlength="32">
+            <button type="button" id="save-group-name-btn" class="btn-secondary">СОХРАНИТЬ</button>
+          </div>
+        </div>
+
+        <div class="group-members-section">
+          <div class="section-title-row">
+            <label class="input-field-label">УЧАСТНИКИ (<span id="group-members-count">0</span>):</label>
+            <button type="button" id="open-invite-modal-btn" class="btn-small-accent">+ ДОБАВИТЬ</button>
+          </div>
+          <div class="members-list-box" id="group-members-list"></div>
+        </div>
+
+        <div class="danger-zone-group">
+          <button type="button" id="leave-group-btn" class="btn-danger-outline">ВЫЙТИ ИЗ ГРУППЫ</button>
+          <button type="button" id="delete-group-btn" class="btn-danger-solid hidden">УДАЛИТЬ ГРУППУ НАВСЕГДА</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА ПРИГЛАШЕНИЯ ИЗ СПИСКА АКТИВНЫХ ЧАТОВ -->
+  <div id="group-invite-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <span>ПРИГЛАСИТЬ В ГРУППУ</span>
+        <button type="button" class="modal-close-btn" id="close-invite-modal-btn">[X]</button>
+      </div>
+      <div class="modal-card-body">
+        <div class="sub-hint-text">Добавить можно только пользователей из ваших принятых диалогов:</div>
+        <div class="invite-candidates-list" id="invite-candidates-list"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- КОНТЕКСТНОЕ МЕНЮ СООБЩЕНИЯ -->
   <div id="msg-context-menu" class="context-menu hidden">
-    <!-- Блок реакций -->
     <div class="context-reactions-row">
       <span class="reaction-emoji-btn" data-emoji="👍">👍</span>
       <span class="reaction-emoji-btn" data-emoji="👎">👎</span>
@@ -126,7 +200,7 @@
     </div>
     <div class="context-menu-divider"></div>
     <button type="button" class="context-menu-item" id="ctx-edit-btn">Изменить</button>
-    <button type="button" class="context-menu-item" id="ctx-pin-both-btn">Закрепить для обоих</button>
+    <button type="button" class="context-menu-item" id="ctx-pin-both-btn">Закрепить для всех</button>
     <button type="button" class="context-menu-item" id="ctx-pin-self-btn">Закрепить для себя</button>
     <div class="context-menu-divider"></div>
     <button type="button" class="context-menu-item danger" id="ctx-delete-btn">Удалить у всех</button>

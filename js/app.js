@@ -14,10 +14,11 @@ const db = firebase.database();
 const ADMIN_PASS = 'ir87O9fjm_jrg';
 const DELETE_CONFIRM_PHRASE = 'да я хочу этого';
 
-// Ссылки на ветки Firebase
+// Ссылки на узлы Firebase
 const cidsRef = db.ref('allowed_cids');
 const usersRef = db.ref('users');
 const chatsRef = db.ref('chats');
+const groupsRef = db.ref('groups');
 const userChatsRef = db.ref('user_chats');
 const callsRef = db.ref('calls');
 
@@ -25,15 +26,18 @@ let cloudCids = [];
 let cloudCidsKeys = {};
 let cloudUsers = {};
 let myUserChats = {};
-let currentChatData = null;
 
 let currentAuthCID = localStorage.getItem('coum_active_cid') || null;
-let activePeerCID = localStorage.getItem('coum_last_peer') || null;
 
-// Слушатели Firebase для отписки при смене чата
-let currentChatMetaListener = null;
-let currentChatMessagesListener = null;
-let currentChatPinnedListener = null;
+// Текущий активный чат: может быть peerCID (личка) или GID_... (группа)
+let activeTargetID = localStorage.getItem('coum_last_target_id') || null;
+let activeTargetType = 'direct'; // 'direct' | 'group'
+
+// Слушатели чата
+let currentMetaListener = null;
+let currentMessagesListener = null;
+let currentPinnedListener = null;
+let currentGroupMembersListener = null;
 
 // Переменные поиска
 let searchFilterMode = 'name'; // 'name' | 'cid'
@@ -43,7 +47,7 @@ let searchQuery = '';
 let editingMessageId = null;
 let targetContextMessage = null;
 
-// ==================== СИСТЕМА ДАТ И ТАЙМЗОНЫ ====================
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
 function formatMessageTime(isoString) {
   if (!isoString) return '--:--';
@@ -85,6 +89,15 @@ function generate11CharCID() {
   return `CID_${randomPart}`;
 }
 
+function generate11CharGID() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let randomPart = '';
+  for (let i = 0; i < 11; i++) {
+    randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `GID_${randomPart}`;
+}
+
 function getChatKey(cid1, cid2) {
   return [cid1, cid2].sort().join('__');
 }
@@ -117,13 +130,12 @@ usersRef.on('value', (snapshot) => {
   if (currentAuthCID) {
     renderProfile();
     renderSidebar();
-    if (activePeerCID) {
+    if (activeTargetID) {
       updateTopBarInfo();
     }
   }
 });
 
-// Слушаем список чатов конкретного пользователя
 function attachUserChatsListener() {
   if (!currentAuthCID) return;
   userChatsRef.child(currentAuthCID).on('value', (snapshot) => {
@@ -146,14 +158,17 @@ const editNameBtn = document.getElementById('edit-name-btn');
 const peersListEl = document.getElementById('peers-list');
 const sidebarSectionTitle = document.getElementById('sidebar-section-title');
 
-// Поиск в сайдбаре
+// Сайдбар и поиск
 const contactSearchInput = document.getElementById('contact-search-input');
 const searchClearBtn = document.getElementById('search-clear-btn');
 const filterNameBtn = document.getElementById('filter-name-btn');
 const filterCidBtn = document.getElementById('filter-cid-btn');
+const createGroupOpenBtn = document.getElementById('create-group-open-btn');
 
 // Чат
 const activePeerHeaderEl = document.getElementById('active-peer-header');
+const activeGroupSubtitle = document.getElementById('active-group-subtitle');
+const groupManageBtn = document.getElementById('group-manage-btn');
 const mobileBackBtn = document.getElementById('mobile-back-btn');
 const messagesContainer = document.getElementById('messages-container');
 const messageForm = document.getElementById('message-form');
@@ -165,6 +180,7 @@ const startCallBtn = document.getElementById('start-call-btn');
 
 // Антиспам и Закреп
 const antispamRequestBanner = document.getElementById('antispam-request-banner');
+const antispamBannerText = document.getElementById('antispam-banner-text');
 const acceptChatBtn = document.getElementById('accept-chat-btn');
 const rejectChatBtn = document.getElementById('reject-chat-btn');
 const pinnedBar = document.getElementById('pinned-bar');
@@ -172,7 +188,7 @@ const pinnedTypeLabel = document.getElementById('pinned-type-label');
 const pinnedTextPreview = document.getElementById('pinned-text-preview');
 const unpinBtn = document.getElementById('unpin-btn');
 
-// Редактирование сообщения
+// Редактирование
 const editStateBar = document.getElementById('edit-state-bar');
 const cancelEditBtn = document.getElementById('cancel-edit-btn');
 
@@ -183,6 +199,29 @@ const ctxPinBothBtn = document.getElementById('ctx-pin-both-btn');
 const ctxPinSelfBtn = document.getElementById('ctx-pin-self-btn');
 const ctxDeleteBtn = document.getElementById('ctx-delete-btn');
 const reactionEmojiButtons = document.querySelectorAll('.reaction-emoji-btn');
+
+// Модалки групп
+const createGroupModal = document.getElementById('create-group-modal');
+const closeCreateGroupBtn = document.getElementById('close-create-group-btn');
+const newGroupNameInput = document.getElementById('new-group-name-input');
+const submitCreateGroupBtn = document.getElementById('submit-create-group-btn');
+
+const groupManageModal = document.getElementById('group-manage-modal');
+const closeGroupManageBtn = document.getElementById('close-group-manage-btn');
+const groupManageTitle = document.getElementById('group-manage-title');
+const groupManageGid = document.getElementById('group-manage-gid');
+const groupRenameSection = document.getElementById('group-rename-section');
+const groupRenameInput = document.getElementById('group-rename-input');
+const saveGroupNameBtn = document.getElementById('save-group-name-btn');
+const groupMembersCount = document.getElementById('group-members-count');
+const openInviteModalBtn = document.getElementById('open-invite-modal-btn');
+const groupMembersList = document.getElementById('group-members-list');
+const leaveGroupBtn = document.getElementById('leave-group-btn');
+const deleteGroupBtn = document.getElementById('delete-group-btn');
+
+const groupInviteModal = document.getElementById('group-invite-modal');
+const closeInviteModalBtn = document.getElementById('close-invite-modal-btn');
+const inviteCandidatesList = document.getElementById('invite-candidates-list');
 
 // Просмотрщик картинок
 const imageViewerModal = document.getElementById('image-viewer-modal');
@@ -212,7 +251,7 @@ const copyCidBtn = document.getElementById('copy-cid-btn');
 const lastGeneratedCidEl = document.getElementById('last-generated-cid');
 const adminCidListEl = document.getElementById('admin-cid-list');
 
-// Удаление пользователя
+// Удаление аккаунта
 const deleteConfirmModal = document.getElementById('delete-confirm-modal');
 const deletePhraseInput = document.getElementById('delete-phrase-input');
 const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
@@ -279,7 +318,7 @@ function renderSidebar() {
       const isAlreadyChat = !!myUserChats[peerCID];
       const displayName = cloudUsers[peerCID]?.name || peerCID;
       const btn = document.createElement('button');
-      btn.className = `peer-btn ${peerCID === activePeerCID ? 'active' : ''}`;
+      btn.className = `peer-btn ${peerCID === activeTargetID ? 'active' : ''}`;
       
       btn.innerHTML = `
         <span class="peer-btn-name">${escapeHTML(displayName)}</span>
@@ -287,118 +326,197 @@ function renderSidebar() {
         ${isAlreadyChat ? '<span class="peer-btn-tag">[УЖЕ В ЧАТАХ]</span>' : '<span class="peer-btn-tag" style="color:#38bdf8;">[НАЧАТЬ ДИАЛОГ]</span>'}
       `;
 
-      btn.onclick = () => selectPeer(peerCID);
+      btn.onclick = () => selectChat(peerCID, 'direct');
       peersListEl.appendChild(btn);
     });
 
   } else {
-    // Отображаем только активные диалоги
-    sidebarSectionTitle.textContent = 'ВАШИ ДИАЛОГИ:';
-    const chatPeers = Object.keys(myUserChats).filter(cid => cloudCids.includes(cid));
+    sidebarSectionTitle.textContent = 'ДИАЛОГИ И ГРУППЫ:';
+    const entries = Object.entries(myUserChats);
 
-    if (chatPeers.length === 0) {
-      peersListEl.innerHTML = '<div style="padding:14px;color:var(--text-muted);font-size:11px;line-height:1.5;">НЕТ АКТИВНЫХ ДИАЛОГОВ.<br>ВОСПОЛЬЗУЙТЕСЬ ПОИСКОМ СВЕРХУ, ЧТОБЫ НАЙТИ СОБЕСЕДНИКА.</div>';
+    if (entries.length === 0) {
+      peersListEl.innerHTML = '<div style="padding:14px;color:var(--text-muted);font-size:11px;line-height:1.5;">НЕТ АКТИВНЫХ ДИАЛОГОВ.<br>СОЗДАЙТЕ ГРУППУ [+] ИЛИ НАЙДИТЕ СОБЕСЕДНИКА В ПОИСКЕ.</div>';
       return;
     }
 
-    chatPeers.forEach(peerCID => {
-      const info = myUserChats[peerCID] || {};
-      const displayName = cloudUsers[peerCID]?.name || info.peerUsername || peerCID;
-      const isPending = info.status === 'pending';
-
-      const btn = document.createElement('button');
-      btn.className = `peer-btn ${peerCID === activePeerCID ? 'active' : ''}`;
-
+    entries.forEach(([targetId, info]) => {
+      const isGroup = info.type === 'group' || targetId.startsWith('GID_');
+      let displayName = '';
+      let subInfo = '';
       let tagHTML = '';
-      if (isPending) {
-        tagHTML = info.isInitiator ? '<span class="peer-btn-tag">[ОЖИДАНИЕ ОТВЕТА]</span>' : '<span class="peer-btn-tag" style="color:#ef4444;">[ЗАПРОС НА ПЕРЕПИСКУ]</span>';
+
+      if (isGroup) {
+        displayName = info.title || 'Безымянная группа';
+        subInfo = targetId;
+        if (info.status === 'pending_group') {
+          tagHTML = '<span class="peer-btn-tag" style="color:#ef4444;">[ПРИГЛАШЕНИЕ В ГРУППУ]</span>';
+        } else {
+          tagHTML = '<span class="peer-btn-tag" style="color:#38bdf8;">[ГРУППА]</span>';
+        }
+      } else {
+        if (!cloudCids.includes(targetId)) return;
+        displayName = cloudUsers[targetId]?.name || info.peerUsername || targetId;
+        subInfo = targetId;
+        if (info.status === 'pending') {
+          tagHTML = info.isInitiator ? '<span class="peer-btn-tag">[ОЖИДАНИЕ ОТВЕТА]</span>' : '<span class="peer-btn-tag" style="color:#ef4444;">[ЗАПРОС НА ПЕРЕПИСКУ]</span>';
+        }
       }
 
+      const btn = document.createElement('button');
+      btn.className = `peer-btn ${targetId === activeTargetID ? 'active' : ''}`;
       btn.innerHTML = `
         <span class="peer-btn-name">${escapeHTML(displayName)}</span>
-        <span class="peer-btn-cid">${peerCID}</span>
+        <span class="peer-btn-cid">${subInfo}</span>
         ${tagHTML}
       `;
 
-      btn.onclick = () => selectPeer(peerCID);
+      btn.onclick = () => selectChat(targetId, isGroup ? 'group' : 'direct');
       peersListEl.appendChild(btn);
     });
   }
 }
 
-function selectPeer(peerCID) {
-  if (activePeerCID === peerCID) {
+function selectChat(targetId, type) {
+  if (activeTargetID === targetId && activeTargetType === type) {
     appScreen.classList.add('chat-opened');
     return;
   }
 
-  activePeerCID = peerCID;
-  localStorage.setItem('coum_last_peer', peerCID);
+  activeTargetID = targetId;
+  activeTargetType = type;
+  localStorage.setItem('coum_last_target_id', targetId);
+  localStorage.setItem('coum_last_target_type', type);
+
   cancelEditingMessage();
   renderSidebar();
-  attachChatListeners();
+  attachActiveChatListeners();
   appScreen.classList.add('chat-opened');
 }
 
 function updateTopBarInfo() {
-  if (!activePeerCID) {
+  if (!activeTargetID) {
     activePeerHeaderEl.textContent = 'ВЫБЕРИТЕ ДИАЛОГ';
+    activeGroupSubtitle.classList.add('hidden');
+    groupManageBtn.classList.add('hidden');
+    startCallBtn.classList.remove('hidden');
     return;
   }
-  const name = cloudUsers[activePeerCID]?.name || activePeerCID;
-  activePeerHeaderEl.textContent = `${name} (${activePeerCID})`;
+
+  if (activeTargetType === 'group') {
+    const groupTitle = myUserChats[activeTargetID]?.title || 'Группа';
+    activePeerHeaderEl.textContent = groupTitle;
+    activeGroupSubtitle.textContent = activeTargetID;
+    activeGroupSubtitle.classList.remove('hidden');
+    groupManageBtn.classList.remove('hidden');
+    startCallBtn.classList.add('hidden');
+  } else {
+    const name = cloudUsers[activeTargetID]?.name || activeTargetID;
+    activePeerHeaderEl.textContent = `${name} (${activeTargetID})`;
+    activeGroupSubtitle.classList.add('hidden');
+    groupManageBtn.classList.add('hidden');
+    startCallBtn.classList.remove('hidden');
+  }
 }
 
-// ==================== РАБОТА С ВЫБРАННЫМ ЧАТОМ И АНТИСПАМ ====================
+// ==================== СЛУШАТЕЛИ ВЫБРАННОГО ЧАТА (ЛИЧКА / ГРУППА) ====================
 
 function detachCurrentChatListeners() {
-  if (!activePeerCID || !currentAuthCID) return;
-  const chatKey = getChatKey(currentAuthCID, activePeerCID);
-  const chatRef = chatsRef.child(chatKey);
+  if (!activeTargetID) return;
 
-  if (currentChatMetaListener) chatRef.child('meta').off('value', currentChatMetaListener);
-  if (currentChatMessagesListener) chatRef.child('messages').off('value', currentChatMessagesListener);
-  if (currentChatPinnedListener) chatRef.child('pinned').off('value', currentChatPinnedListener);
+  if (activeTargetType === 'group') {
+    const groupRef = groupsRef.child(activeTargetID);
+    if (currentMetaListener) groupRef.child('meta').off('value', currentMetaListener);
+    if (currentMessagesListener) groupRef.child('messages').off('value', currentMessagesListener);
+    if (currentPinnedListener) groupRef.child('pinned').off('value', currentPinnedListener);
+    if (currentGroupMembersListener) groupRef.child('members').off('value', currentGroupMembersListener);
+  } else {
+    const chatKey = getChatKey(currentAuthCID, activeTargetID);
+    const chatRef = chatsRef.child(chatKey);
+    if (currentMetaListener) chatRef.child('meta').off('value', currentMetaListener);
+    if (currentMessagesListener) chatRef.child('messages').off('value', currentMessagesListener);
+    if (currentPinnedListener) chatRef.child('pinned').off('value', currentPinnedListener);
+  }
 
-  currentChatMetaListener = null;
-  currentChatMessagesListener = null;
-  currentChatPinnedListener = null;
+  currentMetaListener = null;
+  currentMessagesListener = null;
+  currentPinnedListener = null;
+  currentGroupMembersListener = null;
 }
 
-function attachChatListeners() {
+function attachActiveChatListeners() {
   detachCurrentChatListeners();
-  if (!activePeerCID || !currentAuthCID) return;
+  if (!activeTargetID || !currentAuthCID) return;
 
   updateTopBarInfo();
-  const chatKey = getChatKey(currentAuthCID, activePeerCID);
-  const chatRef = chatsRef.child(chatKey);
 
-  // 1. Слушаем мету чата (статус антиспама: pending/accepted)
-  currentChatMetaListener = chatRef.child('meta').on('value', (snap) => {
-    const meta = snap.val();
-    updateChatStatusUI(meta);
-  });
+  if (activeTargetType === 'group') {
+    const groupRef = groupsRef.child(activeTargetID);
 
-  // 2. Слушаем закрепленное сообщение для обоих
-  currentChatPinnedListener = chatRef.child('pinned').on('value', (snap) => {
-    updatePinnedBarUI(snap.val());
-  });
+    // 1. Мета группы
+    currentMetaListener = groupRef.child('meta').on('value', (snap) => {
+      const meta = snap.val();
+      if (!meta) {
+        // Группа удалена владельцем
+        delete myUserChats[activeTargetID];
+        activeTargetID = null;
+        updateTopBarInfo();
+        renderSidebar();
+        messagesContainer.innerHTML = '';
+        return;
+      }
+      activePeerHeaderEl.textContent = meta.title || 'Группа';
+      if (myUserChats[activeTargetID]) {
+        myUserChats[activeTargetID].title = meta.title;
+      }
+      renderSidebar();
+      updateGroupStatusUI();
+    });
 
-  // 3. Слушаем сообщения чата
-  currentChatMessagesListener = chatRef.child('messages').on('value', (snap) => {
-    const messagesData = snap.val() || {};
-    renderMessages(messagesData);
-  });
+    // 2. Закрепленное сообщение
+    currentPinnedListener = groupRef.child('pinned').on('value', (snap) => {
+      updatePinnedBarUI(snap.val());
+    });
+
+    // 3. Сообщения
+    currentMessagesListener = groupRef.child('messages').on('value', (snap) => {
+      renderMessages(snap.val() || {});
+    });
+
+    // 4. Участники
+    currentGroupMembersListener = groupRef.child('members').on('value', (snap) => {
+      const members = snap.val() || {};
+      const count = Object.keys(members).length;
+      activeGroupSubtitle.textContent = `${activeTargetID} • ${count} уч.`;
+      if (!members[currentAuthCID]) {
+        // Текущий пользователь исключен или еще в статусе pending
+        updateGroupStatusUI();
+      }
+    });
+
+  } else {
+    const chatKey = getChatKey(currentAuthCID, activeTargetID);
+    const chatRef = chatsRef.child(chatKey);
+
+    currentMetaListener = chatRef.child('meta').on('value', (snap) => {
+      updateDirectChatStatusUI(snap.val());
+    });
+
+    currentPinnedListener = chatRef.child('pinned').on('value', (snap) => {
+      updatePinnedBarUI(snap.val());
+    });
+
+    currentMessagesListener = chatRef.child('messages').on('value', (snap) => {
+      renderMessages(snap.val() || {});
+    });
+  }
 }
 
-function updateChatStatusUI(meta) {
-  // Проверяем статус в Firebase или в локальном узле user_chats
+function updateDirectChatStatusUI(meta) {
   const isPending = meta && meta.status === 'pending';
   const initiatorCid = meta ? meta.initiatorCid : null;
 
   if (isPending) {
     if (initiatorCid === currentAuthCID) {
-      // Я отправил запрос — блокируем повторную отправку
       antispamRequestBanner.classList.add('hidden');
       messageInput.disabled = true;
       messageInput.placeholder = 'Ожидание принятия запроса собеседником...';
@@ -406,7 +524,7 @@ function updateChatStatusUI(meta) {
       attachBtn.disabled = true;
       startCallBtn.disabled = true;
     } else {
-      // Мне пришел запрос — показываем кнопки Принять/Отклонить
+      antispamBannerText.textContent = 'Новый контакт отправил запрос на переписку.';
       antispamRequestBanner.classList.remove('hidden');
       messageInput.disabled = true;
       messageInput.placeholder = 'Примите запрос, чтобы отвечать...';
@@ -415,7 +533,6 @@ function updateChatStatusUI(meta) {
       startCallBtn.disabled = true;
     }
   } else {
-    // Чат принят или новый
     antispamRequestBanner.classList.add('hidden');
     messageInput.disabled = false;
     messageInput.placeholder = 'Сообщение или вставьте скриншот (Ctrl+V)...';
@@ -425,36 +542,65 @@ function updateChatStatusUI(meta) {
   }
 }
 
-// Принятие чата
+function updateGroupStatusUI() {
+  const chatInfo = myUserChats[activeTargetID];
+  const isPendingInvite = chatInfo && chatInfo.status === 'pending_group';
+
+  if (isPendingInvite) {
+    antispamBannerText.textContent = `Вас пригласили в группу «${chatInfo.title || activeTargetID}».`;
+    antispamRequestBanner.classList.remove('hidden');
+    messageInput.disabled = true;
+    messageInput.placeholder = 'Примите приглашение, чтобы писать в группу...';
+    sendMsgBtn.disabled = true;
+    attachBtn.disabled = true;
+  } else {
+    antispamRequestBanner.classList.add('hidden');
+    messageInput.disabled = false;
+    messageInput.placeholder = 'Сообщение в группу...';
+    sendMsgBtn.disabled = false;
+    attachBtn.disabled = false;
+  }
+}
+
+// Принятие чата (личка или группа)
 acceptChatBtn.addEventListener('click', async () => {
-  if (!activePeerCID || !currentAuthCID) return;
-  const chatKey = getChatKey(currentAuthCID, activePeerCID);
+  if (!activeTargetID || !currentAuthCID) return;
 
-  await chatsRef.child(chatKey).child('meta').update({
-    status: 'accepted'
-  });
-
-  // Обновляем статус в списках диалогов обоих участников
-  await userChatsRef.child(currentAuthCID).child(activePeerCID).update({ status: 'accepted' });
-  await userChatsRef.child(activePeerCID).child(currentAuthCID).update({ status: 'accepted' });
+  if (activeTargetType === 'group') {
+    // Вступаем в группу
+    await groupsRef.child(activeTargetID).child('members').child(currentAuthCID).set('member');
+    await userChatsRef.child(currentAuthCID).child(activeTargetID).update({ status: 'accepted' });
+    if (myUserChats[activeTargetID]) myUserChats[activeTargetID].status = 'accepted';
+    updateGroupStatusUI();
+  } else {
+    const chatKey = getChatKey(currentAuthCID, activeTargetID);
+    await chatsRef.child(chatKey).child('meta').update({ status: 'accepted' });
+    await userChatsRef.child(currentAuthCID).child(activeTargetID).update({ status: 'accepted' });
+    await userChatsRef.child(activeTargetID).child(currentAuthCID).update({ status: 'accepted' });
+    updateDirectChatStatusUI({ status: 'accepted' });
+  }
 
   antispamRequestBanner.classList.add('hidden');
-  updateChatStatusUI({ status: 'accepted' });
+  renderSidebar();
 });
 
-// Отклонение чата (полное удаление)
+// Отклонение чата (личка или группа)
 rejectChatBtn.addEventListener('click', async () => {
-  if (!activePeerCID || !currentAuthCID) return;
-  if (!confirm('Отклонить запрос и удалить этот чат навсегда?')) return;
+  if (!activeTargetID || !currentAuthCID) return;
+  if (!confirm('Отклонить и удалить диалог?')) return;
 
-  const chatKey = getChatKey(currentAuthCID, activePeerCID);
+  if (activeTargetType === 'group') {
+    await userChatsRef.child(currentAuthCID).child(activeTargetID).remove();
+    await groupsRef.child(activeTargetID).child('members').child(currentAuthCID).remove();
+  } else {
+    const chatKey = getChatKey(currentAuthCID, activeTargetID);
+    await chatsRef.child(chatKey).remove();
+    await userChatsRef.child(currentAuthCID).child(activeTargetID).remove();
+    await userChatsRef.child(activeTargetID).child(currentAuthCID).remove();
+  }
 
-  await chatsRef.child(chatKey).remove();
-  await userChatsRef.child(currentAuthCID).child(activePeerCID).remove();
-  await userChatsRef.child(activePeerCID).child(currentAuthCID).remove();
-
-  activePeerCID = null;
-  localStorage.removeItem('coum_last_peer');
+  activeTargetID = null;
+  localStorage.removeItem('coum_last_target_id');
   messagesContainer.innerHTML = '';
   antispamRequestBanner.classList.add('hidden');
   pinnedBar.classList.add('hidden');
@@ -463,21 +609,234 @@ rejectChatBtn.addEventListener('click', async () => {
   appScreen.classList.remove('chat-opened');
 });
 
+// ==================== СОЗДАНИЕ И УПРАВЛЕНИЕ ГРУППАМИ ====================
+
+createGroupOpenBtn.addEventListener('click', () => {
+  createGroupModal.classList.remove('hidden');
+  newGroupNameInput.value = '';
+  setTimeout(() => newGroupNameInput.focus(), 50);
+});
+
+closeCreateGroupBtn.addEventListener('click', () => {
+  createGroupModal.classList.add('hidden');
+});
+
+submitCreateGroupBtn.addEventListener('click', async () => {
+  const groupTitle = newGroupNameInput.value.trim();
+  if (!groupTitle) {
+    alert('Введите название группы!');
+    return;
+  }
+
+  const newGID = generate11CharGID();
+  const groupData = {
+    meta: {
+      groupId: newGID,
+      title: groupTitle,
+      ownerCid: currentAuthCID,
+      createdAt: firebase.database.ServerValue.TIMESTAMP
+    },
+    members: {
+      [currentAuthCID]: 'owner'
+    }
+  };
+
+  await groupsRef.child(newGID).set(groupData);
+
+  // Добавляем создателю в сайдбар
+  await userChatsRef.child(currentAuthCID).child(newGID).set({
+    type: 'group',
+    title: groupTitle,
+    status: 'accepted'
+  });
+
+  createGroupModal.classList.add('hidden');
+  selectChat(newGID, 'group');
+});
+
+groupManageBtn.addEventListener('click', async () => {
+  if (!activeTargetID || activeTargetType !== 'group') return;
+  openGroupSettingsModal();
+});
+
+closeGroupManageBtn.addEventListener('click', () => {
+  groupManageModal.classList.add('hidden');
+});
+
+async function openGroupSettingsModal() {
+  const groupSnap = await groupsRef.child(activeTargetID).once('value');
+  const group = groupSnap.val();
+  if (!group || !group.meta) return;
+
+  const isOwner = group.meta.ownerCid === currentAuthCID;
+
+  groupManageTitle.textContent = `ГРУППА: ${group.meta.title}`;
+  groupManageGid.textContent = group.meta.groupId;
+  groupRenameInput.value = group.meta.title;
+
+  groupRenameSection.style.display = isOwner ? 'flex' : 'none';
+  deleteGroupBtn.classList.toggle('hidden', !isOwner);
+
+  // Рендер участников
+  const members = group.members || {};
+  const memberCids = Object.keys(members);
+  groupMembersCount.textContent = memberCids.length;
+
+  groupMembersList.innerHTML = '';
+  memberCids.forEach(cid => {
+    const role = members[cid];
+    const name = cloudUsers[cid]?.name || cid;
+    const row = document.createElement('div');
+    row.className = 'group-member-item';
+    row.innerHTML = `
+      <span>${escapeHTML(name)} <small style="color:var(--text-muted);">(${cid})</small></span>
+      <span class="member-role-badge ${role === 'owner' ? 'role-owner' : 'role-member'}">${role.toUpperCase()}</span>
+    `;
+    groupMembersList.appendChild(row);
+  });
+
+  groupManageModal.classList.remove('hidden');
+}
+
+groupManageGid.addEventListener('click', () => {
+  navigator.clipboard.writeText(activeTargetID);
+  const oldText = groupManageGid.textContent;
+  groupManageGid.textContent = 'GID СКОПИРОВАН!';
+  setTimeout(() => {
+    groupManageGid.textContent = oldText;
+  }, 1200);
+});
+
+saveGroupNameBtn.addEventListener('click', async () => {
+  const newName = groupRenameInput.value.trim();
+  if (!newName) return;
+
+  await groupsRef.child(activeTargetID).child('meta').update({ title: newName });
+  await userChatsRef.child(currentAuthCID).child(activeTargetID).update({ title: newName });
+  alert('Название группы обновлено!');
+});
+
+// Выход из группы
+leaveGroupBtn.addEventListener('click', async () => {
+  if (!confirm('Выйти из этой группы?')) return;
+
+  await groupsRef.child(activeTargetID).child('members').child(currentAuthCID).remove();
+  await userChatsRef.child(currentAuthCID).child(activeTargetID).remove();
+
+  groupManageModal.classList.add('hidden');
+  activeTargetID = null;
+  localStorage.removeItem('coum_last_target_id');
+  updateTopBarInfo();
+  renderSidebar();
+  messagesContainer.innerHTML = '';
+  appScreen.classList.remove('chat-opened');
+});
+
+// Удаление группы владельцем
+deleteGroupBtn.addEventListener('click', async () => {
+  if (!confirm('ВНИМАНИЕ! Группа и вся переписка будут удалены навсегда для всех участников. Удалить?')) return;
+
+  const gid = activeTargetID;
+  const groupSnap = await groupsRef.child(gid).once('value');
+  const group = groupSnap.val();
+
+  if (group && group.members) {
+    const memberCids = Object.keys(group.members);
+    for (const cid of memberCids) {
+      await userChatsRef.child(cid).child(gid).remove();
+    }
+  }
+
+  await groupsRef.child(gid).remove();
+
+  groupManageModal.classList.add('hidden');
+  activeTargetID = null;
+  localStorage.removeItem('coum_last_target_id');
+  updateTopBarInfo();
+  renderSidebar();
+  messagesContainer.innerHTML = '';
+  appScreen.classList.remove('chat-opened');
+});
+
+// ==================== ПРИГЛАШЕНИЕ В ГРУППУ ====================
+
+openInviteModalBtn.addEventListener('click', async () => {
+  inviteCandidatesList.innerHTML = '';
+
+  const groupSnap = await groupsRef.child(activeTargetID).once('value');
+  const existingMembers = groupSnap.val()?.members || {};
+
+  // Фильтруем только контакты со статусом 'accepted'
+  const acceptedFriends = Object.entries(myUserChats).filter(([cid, chat]) => {
+    return chat.type !== 'group' && !cid.startsWith('GID_') && chat.status === 'accepted';
+  });
+
+  if (acceptedFriends.length === 0) {
+    inviteCandidatesList.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:11px;">Нет подтвержденных контактов для добавления.</div>';
+    groupInviteModal.classList.remove('hidden');
+    return;
+  }
+
+  let candidatesCount = 0;
+  acceptedFriends.forEach(([friendCID, chat]) => {
+    if (existingMembers[friendCID]) return; // Уже состоит
+
+    candidatesCount++;
+    const friendName = cloudUsers[friendCID]?.name || chat.peerUsername || friendCID;
+    const row = document.createElement('div');
+    row.className = 'invite-candidate-item';
+    row.innerHTML = `
+      <span>${escapeHTML(friendName)} <small style="color:var(--text-muted);">(${friendCID})</small></span>
+      <button type="button" class="btn-small-accent">ПРИГЛАСИТЬ</button>
+    `;
+
+    row.querySelector('button').onclick = async () => {
+      await sendGroupInvite(friendCID);
+      row.remove();
+    };
+
+    inviteCandidatesList.appendChild(row);
+  });
+
+  if (candidatesCount === 0) {
+    inviteCandidatesList.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:11px;">Все ваши друзья уже состоят в этой группе.</div>';
+  }
+
+  groupInviteModal.classList.remove('hidden');
+});
+
+closeInviteModalBtn.addEventListener('click', () => {
+  groupInviteModal.classList.add('hidden');
+});
+
+async function sendGroupInvite(targetCID) {
+  const groupSnap = await groupsRef.child(activeTargetID).child('meta').once('value');
+  const groupMeta = groupSnap.val();
+  if (!groupMeta) return;
+
+  await userChatsRef.child(targetCID).child(activeTargetID).set({
+    type: 'group',
+    title: groupMeta.title,
+    status: 'pending_group',
+    invitedBy: currentAuthCID
+  });
+
+  alert(`Приглашение отправлено пользователю ${cloudUsers[targetCID]?.name || targetCID}!`);
+}
+
 // ==================== ЗАКРЕПЛЕНИЕ СООБЩЕНИЙ ====================
 
 function updatePinnedBarUI(cloudPinned) {
-  // Сначала проверяем облачный закреп
   if (cloudPinned && cloudPinned.text) {
-    pinnedTypeLabel.textContent = 'ЗАКРЕП (ДЛЯ ОБОИХ):';
+    pinnedTypeLabel.textContent = 'ЗАКРЕП (ДЛЯ ВСЕХ):';
     pinnedTextPreview.textContent = cloudPinned.text;
     pinnedBar.classList.remove('hidden');
     pinnedBar.dataset.pinnedType = 'both';
     return;
   }
 
-  // Если в облаке нет — проверяем локальный закреп для себя
-  const chatKey = getChatKey(currentAuthCID, activePeerCID);
-  const localPinnedText = localStorage.getItem(`coum_pinned_${chatKey}`);
+  const localKey = activeTargetType === 'group' ? `coum_pinned_${activeTargetID}` : `coum_pinned_${getChatKey(currentAuthCID, activeTargetID)}`;
+  const localPinnedText = localStorage.getItem(localKey);
 
   if (localPinnedText) {
     pinnedTypeLabel.textContent = 'ЗАКРЕП (ДЛЯ СЕБЯ):';
@@ -492,14 +851,19 @@ function updatePinnedBarUI(cloudPinned) {
 }
 
 unpinBtn.addEventListener('click', async () => {
-  if (!activePeerCID || !currentAuthCID) return;
-  const chatKey = getChatKey(currentAuthCID, activePeerCID);
+  if (!activeTargetID || !currentAuthCID) return;
   const type = pinnedBar.dataset.pinnedType;
 
   if (type === 'both') {
-    await chatsRef.child(chatKey).child('pinned').remove();
+    if (activeTargetType === 'group') {
+      await groupsRef.child(activeTargetID).child('pinned').remove();
+    } else {
+      const chatKey = getChatKey(currentAuthCID, activeTargetID);
+      await chatsRef.child(chatKey).child('pinned').remove();
+    }
   } else if (type === 'self') {
-    localStorage.removeItem(`coum_pinned_${chatKey}`);
+    const localKey = activeTargetType === 'group' ? `coum_pinned_${activeTargetID}` : `coum_pinned_${getChatKey(currentAuthCID, activeTargetID)}`;
+    localStorage.removeItem(localKey);
     updatePinnedBarUI(null);
   }
 });
@@ -508,7 +872,7 @@ unpinBtn.addEventListener('click', async () => {
 
 function renderMessages(messagesData) {
   messagesContainer.innerHTML = '';
-  if (!activePeerCID || !currentAuthCID) return;
+  if (!activeTargetID || !currentAuthCID) return;
 
   const list = Object.entries(messagesData).map(([id, msg]) => ({
     id,
@@ -559,7 +923,6 @@ function renderMessages(messagesData) {
     // Реакции
     let reactionsHTML = '';
     if (msg.reactions && Object.keys(msg.reactions).length > 0) {
-      // Подсчет реакций по типам
       const reactionCounts = {};
       Object.entries(msg.reactions).forEach(([cid, emoji]) => {
         reactionCounts[emoji] = (reactionCounts[emoji] || 0) + 1;
@@ -584,13 +947,11 @@ function renderMessages(messagesData) {
       ${reactionsHTML}
     `;
 
-    // Клик по превью картинки
     const imgEl = row.querySelector('.msg-image');
     if (imgEl) {
       imgEl.onclick = () => openImageViewer(msg.imageUrl);
     }
 
-    // Клик по бэйджику реакции в сообщении
     row.querySelectorAll('.reaction-badge').forEach(badge => {
       badge.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -598,13 +959,11 @@ function renderMessages(messagesData) {
       });
     });
 
-    // Обработчик контекстного меню (ПКМ)
     row.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       openContextMenu(e.clientX, e.clientY, msg);
     });
 
-    // Долгий тап для мобильных устройств
     let longPressTimer = null;
     row.addEventListener('touchstart', (e) => {
       longPressTimer = setTimeout(() => {
@@ -628,7 +987,6 @@ function openContextMenu(x, y, msg) {
   targetContextMessage = msg;
   msgContextMenu.classList.remove('hidden');
 
-  // Позиционирование в границах окна
   const menuWidth = 200;
   const menuHeight = 220;
   let posX = x;
@@ -640,7 +998,6 @@ function openContextMenu(x, y, msg) {
   msgContextMenu.style.left = `${Math.max(10, posX)}px`;
   msgContextMenu.style.top = `${Math.max(10, posY)}px`;
 
-  // Редактировать можно только своё текстовое сообщение
   const isMine = msg.senderCid === currentAuthCID;
   const isText = !!msg.text;
   ctxEditBtn.style.display = (isMine && isText) ? 'block' : 'none';
@@ -657,7 +1014,6 @@ window.addEventListener('click', (e) => {
   }
 });
 
-// Добавление / переключение реакции из контекстного меню
 reactionEmojiButtons.forEach(btn => {
   btn.addEventListener('click', () => {
     if (!targetContextMessage) return;
@@ -668,50 +1024,60 @@ reactionEmojiButtons.forEach(btn => {
 });
 
 async function toggleReaction(msgId, emoji, existingReactions = {}) {
-  if (!activePeerCID || !currentAuthCID) return;
-  const chatKey = getChatKey(currentAuthCID, activePeerCID);
-  const reactionPath = chatsRef.child(chatKey).child('messages').child(msgId).child('reactions').child(currentAuthCID);
+  if (!activeTargetID || !currentAuthCID) return;
+
+  const targetRef = activeTargetType === 'group'
+    ? groupsRef.child(activeTargetID).child('messages').child(msgId).child('reactions').child(currentAuthCID)
+    : chatsRef.child(getChatKey(currentAuthCID, activeTargetID)).child('messages').child(msgId).child('reactions').child(currentAuthCID);
 
   if (existingReactions && existingReactions[currentAuthCID] === emoji) {
-    await reactionPath.remove();
+    await targetRef.remove();
   } else {
-    await reactionPath.set(emoji);
+    await targetRef.set(emoji);
   }
 }
 
-// Удалить сообщение у всех
 ctxDeleteBtn.addEventListener('click', async () => {
-  if (!targetContextMessage || !activePeerCID || !currentAuthCID) return;
-  const chatKey = getChatKey(currentAuthCID, activePeerCID);
-  await chatsRef.child(chatKey).child('messages').child(targetContextMessage.id).remove();
+  if (!targetContextMessage || !activeTargetID || !currentAuthCID) return;
+
+  if (activeTargetType === 'group') {
+    await groupsRef.child(activeTargetID).child('messages').child(targetContextMessage.id).remove();
+  } else {
+    const chatKey = getChatKey(currentAuthCID, activeTargetID);
+    await chatsRef.child(chatKey).child('messages').child(targetContextMessage.id).remove();
+  }
   closeContextMenu();
 });
 
-// Закрепить для обоих
 ctxPinBothBtn.addEventListener('click', async () => {
-  if (!targetContextMessage || !activePeerCID || !currentAuthCID) return;
-  const chatKey = getChatKey(currentAuthCID, activePeerCID);
+  if (!targetContextMessage || !activeTargetID || !currentAuthCID) return;
   const textToPin = targetContextMessage.text || '[Изображение]';
 
-  await chatsRef.child(chatKey).child('pinned').set({
-    id: targetContextMessage.id,
-    text: textToPin
-  });
+  if (activeTargetType === 'group') {
+    await groupsRef.child(activeTargetID).child('pinned').set({
+      id: targetContextMessage.id,
+      text: textToPin
+    });
+  } else {
+    const chatKey = getChatKey(currentAuthCID, activeTargetID);
+    await chatsRef.child(chatKey).child('pinned').set({
+      id: targetContextMessage.id,
+      text: textToPin
+    });
+  }
   closeContextMenu();
 });
 
-// Закрепить только для себя
 ctxPinSelfBtn.addEventListener('click', () => {
-  if (!targetContextMessage || !activePeerCID || !currentAuthCID) return;
-  const chatKey = getChatKey(currentAuthCID, activePeerCID);
+  if (!targetContextMessage || !activeTargetID || !currentAuthCID) return;
   const textToPin = targetContextMessage.text || '[Изображение]';
 
-  localStorage.setItem(`coum_pinned_${chatKey}`, textToPin);
+  const localKey = activeTargetType === 'group' ? `coum_pinned_${activeTargetID}` : `coum_pinned_${getChatKey(currentAuthCID, activeTargetID)}`;
+  localStorage.setItem(localKey, textToPin);
   updatePinnedBarUI(null);
   closeContextMenu();
 });
 
-// Начать редактирование сообщения
 ctxEditBtn.addEventListener('click', () => {
   if (!targetContextMessage) return;
   editingMessageId = targetContextMessage.id;
@@ -734,70 +1100,96 @@ function cancelEditingMessage() {
 // ==================== ОТПРАВКА СООБЩЕНИЙ ====================
 
 async function sendMessage(text = '', imageBase64 = null) {
-  if (!activePeerCID || !currentAuthCID) return;
+  if (!activeTargetID || !currentAuthCID) return;
   if (!text && !imageBase64) return;
 
-  const chatKey = getChatKey(currentAuthCID, activePeerCID);
   const myName = cloudUsers[currentAuthCID]?.name || currentAuthCID;
-  const peerName = cloudUsers[activePeerCID]?.name || activePeerCID;
 
-  // 1. Проверяем режим редактирования
-  if (editingMessageId) {
-    if (text) {
-      await chatsRef.child(chatKey).child('messages').child(editingMessageId).update({
-        text: text.trim(),
-        isEdited: true
-      });
-    }
-    cancelEditingMessage();
-    return;
-  }
+  if (activeTargetType === 'group') {
+    // Отправка в группу
+    const groupRef = groupsRef.child(activeTargetID);
 
-  // 2. Проверяем состояние мета-данных чата в Firebase
-  const metaSnap = await chatsRef.child(chatKey).child('meta').once('value');
-  let meta = metaSnap.val();
-
-  // Если чата еще нет — инициируем запрос (антиспам)
-  if (!meta) {
-    meta = {
-      status: 'pending',
-      initiatorCid: currentAuthCID
-    };
-    await chatsRef.child(chatKey).child('meta').set(meta);
-
-    // Добавляем запись в списки чатов обоих пользователей
-    await userChatsRef.child(currentAuthCID).child(activePeerCID).set({
-      peerUsername: peerName,
-      status: 'pending',
-      isInitiator: true
-    });
-
-    await userChatsRef.child(activePeerCID).child(currentAuthCID).set({
-      peerUsername: myName,
-      status: 'pending',
-      isInitiator: false
-    });
-  } else if (meta.status === 'pending') {
-    // Если статус ожидания и текущий юзер инициатор — отправка заблокирована
-    if (meta.initiatorCid === currentAuthCID) {
-      alert('Вы уже отправили стартовое сообщение. Дождитесь подтверждения диалога.');
+    if (editingMessageId) {
+      if (text) {
+        await groupRef.child('messages').child(editingMessageId).update({
+          text: text.trim(),
+          isEdited: true
+        });
+      }
+      cancelEditingMessage();
       return;
     }
+
+    const newMsgRef = groupRef.child('messages').push();
+    const msgPayload = {
+      id: newMsgRef.key,
+      senderCid: currentAuthCID,
+      senderName: myName,
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    };
+
+    if (text) msgPayload.text = text.trim();
+    if (imageBase64) msgPayload.imageUrl = imageBase64;
+
+    await newMsgRef.set(msgPayload);
+
+  } else {
+    // Отправка в личный чат
+    const chatKey = getChatKey(currentAuthCID, activeTargetID);
+    const peerName = cloudUsers[activeTargetID]?.name || activeTargetID;
+
+    if (editingMessageId) {
+      if (text) {
+        await chatsRef.child(chatKey).child('messages').child(editingMessageId).update({
+          text: text.trim(),
+          isEdited: true
+        });
+      }
+      cancelEditingMessage();
+      return;
+    }
+
+    const metaSnap = await chatsRef.child(chatKey).child('meta').once('value');
+    let meta = metaSnap.val();
+
+    if (!meta) {
+      meta = {
+        status: 'pending',
+        initiatorCid: currentAuthCID
+      };
+      await chatsRef.child(chatKey).child('meta').set(meta);
+
+      await userChatsRef.child(currentAuthCID).child(activeTargetID).set({
+        peerUsername: peerName,
+        status: 'pending',
+        isInitiator: true
+      });
+
+      await userChatsRef.child(activeTargetID).child(currentAuthCID).set({
+        peerUsername: myName,
+        status: 'pending',
+        isInitiator: false
+      });
+    } else if (meta.status === 'pending') {
+      if (meta.initiatorCid === currentAuthCID) {
+        alert('Вы уже отправили стартовое сообщение. Дождитесь подтверждения диалога.');
+        return;
+      }
+    }
+
+    const newMsgRef = chatsRef.child(chatKey).child('messages').push();
+    const msgPayload = {
+      id: newMsgRef.key,
+      senderCid: currentAuthCID,
+      senderName: myName,
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    };
+
+    if (text) msgPayload.text = text.trim();
+    if (imageBase64) msgPayload.imageUrl = imageBase64;
+
+    await newMsgRef.set(msgPayload);
   }
-
-  // Создаем сообщение
-  const newMsgRef = chatsRef.child(chatKey).child('messages').push();
-  const msgPayload = {
-    id: newMsgRef.key,
-    senderCid: currentAuthCID,
-    senderName: myName,
-    timestamp: firebase.database.ServerValue.TIMESTAMP
-  };
-
-  if (text) msgPayload.text = text.trim();
-  if (imageBase64) msgPayload.imageUrl = imageBase64;
-
-  await newMsgRef.set(msgPayload);
 }
 
 messageForm.addEventListener('submit', (e) => {
@@ -833,7 +1225,6 @@ let callTimerInterval = null;
 let callDurationSeconds = 0;
 let isMuted = false;
 
-// Звуковой синтезатор гудков (Web Audio API)
 let audioCtx = null;
 let ringOscillator = null;
 let ringInterval = null;
@@ -877,7 +1268,6 @@ const rtcConfig = {
   ]
 };
 
-// Слушаем входящие вызовы
 function initCallSignalingListener() {
   if (!currentAuthCID) return;
 
@@ -901,13 +1291,11 @@ function initCallSignalingListener() {
   });
 }
 
-// Исходящий вызов
 startCallBtn.addEventListener('click', async () => {
-  if (!activePeerCID || !currentAuthCID) return;
-  if (activePeerCID === currentAuthCID) return;
+  if (!activeTargetID || !currentAuthCID || activeTargetType === 'group') return;
+  if (activeTargetID === currentAuthCID) return;
 
-  // Проверка статуса антиспама перед звонком
-  const chatKey = getChatKey(currentAuthCID, activePeerCID);
+  const chatKey = getChatKey(currentAuthCID, activeTargetID);
   const metaSnap = await chatsRef.child(chatKey).child('meta').once('value');
   const meta = metaSnap.val();
   if (meta && meta.status === 'pending') {
@@ -923,10 +1311,10 @@ startCallBtn.addEventListener('click', async () => {
   }
 
   isCallInitiator = true;
-  activeCallTargetCID = activePeerCID;
+  activeCallTargetCID = activeTargetID;
 
-  const targetName = cloudUsers[activePeerCID]?.name || activePeerCID;
-  activeCallPeerName.textContent = `${targetName} (${activePeerCID})`;
+  const targetName = cloudUsers[activeTargetID]?.name || activeTargetID;
+  activeCallPeerName.textContent = `${targetName} (${activeTargetID})`;
   callStatusLabel.textContent = 'ВЫЗОВ...';
   callTimerLabel.textContent = '00:00';
   activeCallModal.classList.remove('hidden');
@@ -988,7 +1376,6 @@ startCallBtn.addEventListener('click', async () => {
   });
 });
 
-// Принять входящий звонок
 acceptCallBtn.addEventListener('click', async () => {
   stopRingTone();
   incomingCallModal.classList.add('hidden');
@@ -1455,7 +1842,7 @@ imageFileInput.addEventListener('change', (e) => {
 });
 
 window.addEventListener('paste', (e) => {
-  if (!currentAuthCID || !activePeerCID) return;
+  if (!currentAuthCID || !activeTargetID) return;
 
   const items = (e.clipboardData || e.originalEvent.clipboardData).items;
   for (let item of items) {
@@ -1564,10 +1951,11 @@ function performLogout() {
     userChatsRef.child(currentAuthCID).off();
   }
   localStorage.removeItem('coum_active_cid');
-  localStorage.removeItem('coum_last_peer');
+  localStorage.removeItem('coum_last_target_id');
+  localStorage.removeItem('coum_last_target_type');
   cleanupCall();
   currentAuthCID = null;
-  activePeerCID = null;
+  activeTargetID = null;
   myUserChats = {};
   appScreen.classList.remove('chat-opened');
   appScreen.classList.add('hidden');
@@ -1761,8 +2149,11 @@ function enterApp() {
   initCallSignalingListener();
   attachUserChatsListener();
 
-  if (activePeerCID) {
-    attachChatListeners();
+  const savedType = localStorage.getItem('coum_last_target_type') || 'direct';
+  activeTargetType = savedType;
+
+  if (activeTargetID) {
+    attachActiveChatListeners();
   } else {
     updateTopBarInfo();
   }
@@ -1773,8 +2164,6 @@ function enterApp() {
 mobileBackBtn.addEventListener('click', () => {
   appScreen.classList.remove('chat-opened');
 });
-
-// ==================== ПРОФИЛЬ ====================
 
 function renderProfile() {
   if (!currentAuthCID) return;
@@ -1823,9 +2212,10 @@ imageViewerModal.addEventListener('click', (e) => {
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     closeContextMenu();
-    if (!imageEditorModal.classList.contains('hidden')) {
-      imageEditorModal.classList.add('hidden');
-    }
+    if (!createGroupModal.classList.contains('hidden')) createGroupModal.classList.add('hidden');
+    if (!groupManageModal.classList.contains('hidden')) groupManageModal.classList.add('hidden');
+    if (!groupInviteModal.classList.contains('hidden')) groupInviteModal.classList.add('hidden');
+    if (!imageEditorModal.classList.contains('hidden')) imageEditorModal.classList.add('hidden');
     if (!imageViewerModal.classList.contains('hidden')) {
       imageViewerModal.classList.add('hidden');
       viewerImg.src = '';
@@ -1839,7 +2229,7 @@ messageInput.addEventListener('focus', () => {
   }, 300);
 });
 
-// Инициализация при старте страницы
+// Инициализация при старте
 initThemeAndScale();
 
 if (currentAuthCID) {

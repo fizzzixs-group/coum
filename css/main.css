@@ -346,11 +346,34 @@ html, body {
   border-color: var(--accent-color);
 }
 
+.sidebar-section-header {
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-panel);
+}
+
 .sidebar-section-title {
-  padding: 8px 12px 4px 12px;
   font-size: 10px;
   color: var(--text-muted);
   letter-spacing: 1px;
+}
+
+.create-group-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: #38bdf8;
+  font-size: 10px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.create-group-btn:hover {
+  background: #0369a1;
+  color: #fff;
+  border-color: #38bdf8;
 }
 
 .peers-list {
@@ -457,11 +480,28 @@ html, body {
   overflow: hidden;
 }
 
+.chat-header-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.active-group-subtitle {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.chat-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .call-action-btn {
   background: var(--bg-input);
   border: 1px solid var(--border-color);
   color: var(--text-bright);
-  font-size: 15px;
+  font-size: 13px;
   padding: 6px 12px;
   cursor: pointer;
   border-radius: 0;
@@ -530,7 +570,7 @@ html, body {
   color: #ef4444;
 }
 
-/* Баннер антиспама */
+/* Баннер антиспама и инвайтов */
 .antispam-banner {
   background: #1c1508;
   border-bottom: 1px solid #78350f;
@@ -789,6 +829,210 @@ html, body {
 .message-form button[type="submit"]:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+/* ==================== МОДАЛКИ ГРУПП ==================== */
+.modal-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  width: 90%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-card.large {
+  max-width: 500px;
+  max-height: 85vh;
+}
+
+.modal-card-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--text-bright);
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.modal-close-btn:hover {
+  color: var(--text-bright);
+}
+
+.modal-card-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+.modal-card-actions {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.input-field-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.text-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-bright);
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+}
+
+.text-input:focus {
+  border-color: var(--accent-color);
+}
+
+.input-row-flex {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: var(--accent-color);
+  color: var(--bg-main);
+  border: 1px solid var(--accent-color);
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  background: var(--bg-hover);
+  color: var(--text-bright);
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-small-accent {
+  background: #0284c7;
+  color: #fff;
+  border: 1px solid #38bdf8;
+  font-size: 10px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.group-gid-badge {
+  background: var(--bg-input);
+  border: 1px dashed var(--border-color);
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #38bdf8;
+  cursor: pointer;
+  user-select: none;
+}
+
+.group-gid-badge:hover {
+  background: var(--bg-hover);
+}
+
+.section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.members-list-box, .invite-candidates-list {
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.group-member-item, .invite-candidate-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 11px;
+}
+
+.group-member-item:last-child, .invite-candidate-item:last-child {
+  border-bottom: none;
+}
+
+.member-role-badge {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+.role-owner {
+  background: #78350f;
+  color: #fef08a;
+}
+
+.role-member {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+
+.danger-zone-group {
+  margin-top: 10px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-danger-outline {
+  background: transparent;
+  border: 1px solid #7f1d1d;
+  color: #f87171;
+  padding: 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.btn-danger-outline:hover {
+  background: #450a0a;
+}
+
+.btn-danger-solid {
+  background: #7f1d1d;
+  border: 1px solid #991b1b;
+  color: #fff;
+  padding: 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.sub-hint-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
 /* ==================== КОНТЕКСТНОЕ МЕНЮ ==================== */
