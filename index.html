@@ -53,17 +53,26 @@
         </div>
       </div>
 
-      <!-- Заголовок секции списка + Кнопка создания группы -->
+      <!-- Заголовок секции списка -->
       <div class="sidebar-section-header">
-        <span class="sidebar-section-title" id="sidebar-section-title">ДИАЛОГИ</span>
-        <button type="button" id="create-group-open-btn" class="create-group-btn" title="Создать группу">[+] ГРУППА</button>
+        <span class="sidebar-section-title" id="sidebar-section-title">ВАШИ ДИАЛОГИ</span>
       </div>
 
       <!-- Контейнер для активных чатов, групп или результатов поиска -->
       <div class="peers-list" id="peers-list"></div>
 
+      <!-- Нижняя панель: НАСТРОЙКИ и ПЛЮСИК РЯДОМ -->
       <div class="sidebar-bottom">
-        <button id="open-settings-btn">[НАСТРОЙКИ]</button>
+        <div class="sidebar-actions-row">
+          <button type="button" id="open-settings-btn" class="sidebar-settings-btn">[НАСТРОЙКИ]</button>
+          <div class="add-action-wrapper">
+            <button type="button" id="sidebar-plus-btn" class="sidebar-plus-btn" title="Создать...">+</button>
+            <!-- Выпадающее меню по клику на плюсик -->
+            <div id="plus-dropdown-menu" class="plus-dropdown-menu hidden">
+              <button type="button" id="dropdown-create-group-btn" class="dropdown-item">👥 Создать группу</button>
+            </div>
+          </div>
+        </div>
       </div>
     </aside>
 

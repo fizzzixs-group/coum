@@ -346,8 +346,9 @@ html, body {
   border-color: var(--accent-color);
 }
 
+/* Заголовок секции сайдбара */
 .sidebar-section-header {
-  padding: 8px 12px;
+  padding: 10px 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -359,21 +360,6 @@ html, body {
   font-size: 10px;
   color: var(--text-muted);
   letter-spacing: 1px;
-}
-
-.create-group-btn {
-  background: transparent;
-  border: 1px solid var(--border-color);
-  color: #38bdf8;
-  font-size: 10px;
-  padding: 2px 6px;
-  cursor: pointer;
-}
-
-.create-group-btn:hover {
-  background: #0369a1;
-  color: #fff;
-  border-color: #38bdf8;
 }
 
 .peers-list {
@@ -426,13 +412,20 @@ html, body {
   margin-top: 2px;
 }
 
+/* Нижняя панель сайдбара с настройками и плюсиком */
 .sidebar-bottom {
   padding: 10px;
   border-top: 1px solid var(--border-color);
 }
 
-.sidebar-bottom button {
-  width: 100%;
+.sidebar-actions-row {
+  display: flex;
+  gap: 8px;
+  position: relative;
+}
+
+.sidebar-settings-btn {
+  flex: 1;
   background: var(--bg-input);
   color: var(--text-main);
   border: 1px solid var(--border-color);
@@ -442,7 +435,67 @@ html, body {
   border-radius: 0;
 }
 
-.sidebar-bottom button:hover {
+.sidebar-settings-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-bright);
+}
+
+.add-action-wrapper {
+  position: relative;
+  display: flex;
+}
+
+.sidebar-plus-btn {
+  width: 42px;
+  background: var(--bg-input);
+  color: var(--text-bright);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sidebar-plus-btn:hover, .sidebar-plus-btn.active {
+  background: var(--bg-hover);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* Выпадающее меню над плюсиком */
+.plus-dropdown-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  min-width: 170px;
+  z-index: 1200;
+  padding: 4px;
+}
+
+.dropdown-item {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.dropdown-item:hover {
   background: var(--bg-hover);
   color: var(--text-bright);
 }

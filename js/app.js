@@ -14,7 +14,7 @@ const db = firebase.database();
 const ADMIN_PASS = 'ir87O9fjm_jrg';
 const DELETE_CONFIRM_PHRASE = 'да я хочу этого';
 
-// Ссылки на узлы Firebase
+// Ссылки на ветки Firebase
 const cidsRef = db.ref('allowed_cids');
 const usersRef = db.ref('users');
 const chatsRef = db.ref('chats');
@@ -29,7 +29,7 @@ let myUserChats = {};
 
 let currentAuthCID = localStorage.getItem('coum_active_cid') || null;
 
-// Текущий активный чат: может быть peerCID (личка) или GID_... (группа)
+// Текущий активный чат: peerCID (личка) или GID_... (группа)
 let activeTargetID = localStorage.getItem('coum_last_target_id') || null;
 let activeTargetType = 'direct'; // 'direct' | 'group'
 
@@ -39,11 +39,11 @@ let currentMessagesListener = null;
 let currentPinnedListener = null;
 let currentGroupMembersListener = null;
 
-// Переменные поиска
+// Поиск
 let searchFilterMode = 'name'; // 'name' | 'cid'
 let searchQuery = '';
 
-// Переменные редактирования и контекстного меню
+// Редактирование и контекстное меню
 let editingMessageId = null;
 let targetContextMessage = null;
 
@@ -163,7 +163,11 @@ const contactSearchInput = document.getElementById('contact-search-input');
 const searchClearBtn = document.getElementById('search-clear-btn');
 const filterNameBtn = document.getElementById('filter-name-btn');
 const filterCidBtn = document.getElementById('filter-cid-btn');
-const createGroupOpenBtn = document.getElementById('create-group-open-btn');
+
+// Плюсик и дропдаун внизу сайдбара
+const sidebarPlusBtn = document.getElementById('sidebar-plus-btn');
+const plusDropdownMenu = document.getElementById('plus-dropdown-menu');
+const dropdownCreateGroupBtn = document.getElementById('dropdown-create-group-btn');
 
 // Чат
 const activePeerHeaderEl = document.getElementById('active-peer-header');
@@ -258,6 +262,30 @@ const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
 const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
 let cidPendingDelete = null;
 
+// ==================== ЛОГИКА ПЛЮСИКА И МЕНЮ СОЗДАНИЯ ====================
+
+sidebarPlusBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const isHidden = plusDropdownMenu.classList.contains('hidden');
+  plusDropdownMenu.classList.toggle('hidden', !isHidden);
+  sidebarPlusBtn.classList.toggle('active', isHidden);
+});
+
+document.addEventListener('click', (e) => {
+  if (!plusDropdownMenu.contains(e.target) && e.target !== sidebarPlusBtn) {
+    plusDropdownMenu.classList.add('hidden');
+    sidebarPlusBtn.classList.remove('active');
+  }
+});
+
+dropdownCreateGroupBtn.addEventListener('click', () => {
+  plusDropdownMenu.classList.add('hidden');
+  sidebarPlusBtn.classList.remove('active');
+  createGroupModal.classList.remove('hidden');
+  newGroupNameInput.value = '';
+  setTimeout(() => newGroupNameInput.focus(), 50);
+});
+
 // ==================== САЙДБАР И СИСТЕМА ПОИСКА ====================
 
 filterNameBtn.addEventListener('click', () => {
@@ -331,11 +359,11 @@ function renderSidebar() {
     });
 
   } else {
-    sidebarSectionTitle.textContent = 'ДИАЛОГИ И ГРУППЫ:';
+    sidebarSectionTitle.textContent = 'ВАШИ ДИАЛОГИ:';
     const entries = Object.entries(myUserChats);
 
     if (entries.length === 0) {
-      peersListEl.innerHTML = '<div style="padding:14px;color:var(--text-muted);font-size:11px;line-height:1.5;">НЕТ АКТИВНЫХ ДИАЛОГОВ.<br>СОЗДАЙТЕ ГРУППУ [+] ИЛИ НАЙДИТЕ СОБЕСЕДНИКА В ПОИСКЕ.</div>';
+      peersListEl.innerHTML = '<div style="padding:14px;color:var(--text-muted);font-size:11px;line-height:1.5;">НЕТ АКТИВНЫХ ДИАЛОГОВ.<br>СОЗДАЙТЕ ГРУППУ ЧЕРЕЗ [+] ИЛИ НАЙДИТЕ СОБЕСЕДНИКА.</div>';
       return;
     }
 
@@ -456,7 +484,6 @@ function attachActiveChatListeners() {
     currentMetaListener = groupRef.child('meta').on('value', (snap) => {
       const meta = snap.val();
       if (!meta) {
-        // Группа удалена владельцем
         delete myUserChats[activeTargetID];
         activeTargetID = null;
         updateTopBarInfo();
@@ -488,7 +515,6 @@ function attachActiveChatListeners() {
       const count = Object.keys(members).length;
       activeGroupSubtitle.textContent = `${activeTargetID} • ${count} уч.`;
       if (!members[currentAuthCID]) {
-        // Текущий пользователь исключен или еще в статусе pending
         updateGroupStatusUI();
       }
     });
@@ -562,12 +588,11 @@ function updateGroupStatusUI() {
   }
 }
 
-// Принятие чата (личка или группа)
+// Принятие чата
 acceptChatBtn.addEventListener('click', async () => {
   if (!activeTargetID || !currentAuthCID) return;
 
   if (activeTargetType === 'group') {
-    // Вступаем в группу
     await groupsRef.child(activeTargetID).child('members').child(currentAuthCID).set('member');
     await userChatsRef.child(currentAuthCID).child(activeTargetID).update({ status: 'accepted' });
     if (myUserChats[activeTargetID]) myUserChats[activeTargetID].status = 'accepted';
@@ -584,7 +609,7 @@ acceptChatBtn.addEventListener('click', async () => {
   renderSidebar();
 });
 
-// Отклонение чата (личка или группа)
+// Отклонение чата
 rejectChatBtn.addEventListener('click', async () => {
   if (!activeTargetID || !currentAuthCID) return;
   if (!confirm('Отклонить и удалить диалог?')) return;
@@ -610,12 +635,6 @@ rejectChatBtn.addEventListener('click', async () => {
 });
 
 // ==================== СОЗДАНИЕ И УПРАВЛЕНИЕ ГРУППАМИ ====================
-
-createGroupOpenBtn.addEventListener('click', () => {
-  createGroupModal.classList.remove('hidden');
-  newGroupNameInput.value = '';
-  setTimeout(() => newGroupNameInput.focus(), 50);
-});
 
 closeCreateGroupBtn.addEventListener('click', () => {
   createGroupModal.classList.add('hidden');
@@ -677,7 +696,6 @@ async function openGroupSettingsModal() {
   groupRenameSection.style.display = isOwner ? 'flex' : 'none';
   deleteGroupBtn.classList.toggle('hidden', !isOwner);
 
-  // Рендер участников
   const members = group.members || {};
   const memberCids = Object.keys(members);
   groupMembersCount.textContent = memberCids.length;
@@ -766,7 +784,6 @@ openInviteModalBtn.addEventListener('click', async () => {
   const groupSnap = await groupsRef.child(activeTargetID).once('value');
   const existingMembers = groupSnap.val()?.members || {};
 
-  // Фильтруем только контакты со статусом 'accepted'
   const acceptedFriends = Object.entries(myUserChats).filter(([cid, chat]) => {
     return chat.type !== 'group' && !cid.startsWith('GID_') && chat.status === 'accepted';
   });
@@ -779,7 +796,7 @@ openInviteModalBtn.addEventListener('click', async () => {
 
   let candidatesCount = 0;
   acceptedFriends.forEach(([friendCID, chat]) => {
-    if (existingMembers[friendCID]) return; // Уже состоит
+    if (existingMembers[friendCID]) return;
 
     candidatesCount++;
     const friendName = cloudUsers[friendCID]?.name || chat.peerUsername || friendCID;
@@ -920,7 +937,6 @@ function renderMessages(messagesData) {
       contentHTML += `<span class="msg-edited-tag">(изм.)</span>`;
     }
 
-    // Реакции
     let reactionsHTML = '';
     if (msg.reactions && Object.keys(msg.reactions).length > 0) {
       const reactionCounts = {};
@@ -1106,7 +1122,6 @@ async function sendMessage(text = '', imageBase64 = null) {
   const myName = cloudUsers[currentAuthCID]?.name || currentAuthCID;
 
   if (activeTargetType === 'group') {
-    // Отправка в группу
     const groupRef = groupsRef.child(activeTargetID);
 
     if (editingMessageId) {
@@ -1134,7 +1149,6 @@ async function sendMessage(text = '', imageBase64 = null) {
     await newMsgRef.set(msgPayload);
 
   } else {
-    // Отправка в личный чат
     const chatKey = getChatKey(currentAuthCID, activeTargetID);
     const peerName = cloudUsers[activeTargetID]?.name || activeTargetID;
 
@@ -2212,6 +2226,8 @@ imageViewerModal.addEventListener('click', (e) => {
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     closeContextMenu();
+    plusDropdownMenu.classList.add('hidden');
+    sidebarPlusBtn.classList.remove('active');
     if (!createGroupModal.classList.contains('hidden')) createGroupModal.classList.add('hidden');
     if (!groupManageModal.classList.contains('hidden')) groupManageModal.classList.add('hidden');
     if (!groupInviteModal.classList.contains('hidden')) groupInviteModal.classList.add('hidden');
