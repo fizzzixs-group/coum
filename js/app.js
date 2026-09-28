@@ -29,6 +29,9 @@ let myUserChats = {};
 
 let currentAuthCID = localStorage.getItem('coum_active_cid') || null;
 
+// Временное хранение CID при двухэтапном входе
+let pendingLoginCID = null;
+
 // Текущий активный чат: peerCID (личка) или GID_... (группа)
 let activeTargetID = localStorage.getItem('coum_last_target_id') || null;
 let activeTargetType = 'direct'; // 'direct' | 'group'
@@ -149,8 +152,16 @@ function attachUserChatsListener() {
 const authScreen = document.getElementById('auth-screen');
 const authLogo = document.getElementById('auth-logo');
 const appScreen = document.getElementById('app-screen');
+
+// Авторизация
+const authCidRow = document.getElementById('auth-cid-row');
 const authInput = document.getElementById('auth-input');
+const authSubmitCidBtn = document.getElementById('auth-submit-cid-btn');
+const authPassRow = document.getElementById('auth-pass-row');
+const authPassInput = document.getElementById('auth-pass-input');
+const authSubmitPassBtn = document.getElementById('auth-submit-pass-btn');
 const authError = document.getElementById('auth-error');
+const authHint = document.getElementById('auth-hint');
 
 const myDisplayNameEl = document.getElementById('my-display-name');
 const myFixedCidEl = document.getElementById('my-fixed-cid');
@@ -171,7 +182,6 @@ const plusDropdownMenu = document.getElementById('plus-dropdown-menu');
 const dropdownCreateGroupBtn = document.getElementById('dropdown-create-group-btn');
 
 // Чат
-const chatTopbarBannerBg = document.getElementById('chat-topbar-banner-bg');
 const activeChatAvatar = document.getElementById('active-chat-avatar');
 const activePeerHeaderEl = document.getElementById('active-peer-header');
 const activeGroupSubtitle = document.getElementById('active-group-subtitle');
@@ -236,19 +246,32 @@ const imageViewerModal = document.getElementById('image-viewer-modal');
 const viewerImg = document.getElementById('viewer-img');
 const closeViewerBtn = document.getElementById('close-viewer-btn');
 
-// Настройки, аватарка и баннер
+// Настройки, пароль и самоуничтожение
 const openSettingsBtn = document.getElementById('open-settings-btn');
 const settingsModal = document.getElementById('settings-modal');
 const settingsCloseBtn = document.getElementById('settings-close-btn');
 const settingsLogoutBtn = document.getElementById('settings-logout-btn');
-const settingsBannerPreview = document.getElementById('settings-banner-preview');
+
 const settingsAvatarPreview = document.getElementById('settings-avatar-preview');
 const avatarFileInput = document.getElementById('avatar-file-input');
 const uploadAvatarBtn = document.getElementById('upload-avatar-btn');
 const clearAvatarBtn = document.getElementById('clear-avatar-btn');
-const bannerFileInput = document.getElementById('banner-file-input');
-const uploadBannerBtn = document.getElementById('upload-banner-btn');
-const clearBannerBtn = document.getElementById('clear-banner-btn');
+
+const passwordStatusIndicator = document.getElementById('password-status-indicator');
+const setPassInput1 = document.getElementById('set-pass-input1');
+const setPassInput2 = document.getElementById('set-pass-input2');
+const savePasswordBtn = document.getElementById('save-password-btn');
+const removePasswordBtn = document.getElementById('remove-password-btn');
+
+const autoDeleteCheckbox = document.getElementById('auto-delete-checkbox');
+const autoDeleteAttemptsInput = document.getElementById('auto-delete-attempts-input');
+const saveAutoDeleteConfigBtn = document.getElementById('save-auto-delete-config-btn');
+
+// Модалка предупреждения с таймером
+const selfDestructWarnModal = document.getElementById('self-destruct-warn-modal');
+const confirmSelfDestructBtn = document.getElementById('confirm-self-destruct-btn');
+const cancelSelfDestructBtn = document.getElementById('cancel-self-destruct-btn');
+let warnTimerInterval = null;
 
 const hideCidCheckbox = document.getElementById('hide-cid-checkbox');
 const scaleButtons = document.querySelectorAll('.scale-btn');
@@ -459,7 +482,6 @@ function updateTopBarInfo() {
     activeGroupSubtitle.classList.add('hidden');
     groupManageBtn.classList.add('hidden');
     startCallBtn.classList.remove('hidden');
-    chatTopbarBannerBg.style.backgroundImage = 'none';
     activeChatAvatar.style.backgroundImage = 'none';
     return;
   }
@@ -471,7 +493,6 @@ function updateTopBarInfo() {
     activeGroupSubtitle.classList.remove('hidden');
     groupManageBtn.classList.remove('hidden');
     startCallBtn.classList.add('hidden');
-    chatTopbarBannerBg.style.backgroundImage = 'none';
     activeChatAvatar.style.backgroundImage = 'none';
   } else {
     const peerObj = cloudUsers[activeTargetID] || {};
@@ -482,17 +503,10 @@ function updateTopBarInfo() {
     groupManageBtn.classList.add('hidden');
     startCallBtn.classList.remove('hidden');
 
-    // Рендер аватарки и баннера собеседника в шапке чата
     if (peerObj.avatarUrl) {
       activeChatAvatar.style.backgroundImage = `url('${peerObj.avatarUrl}')`;
     } else {
       activeChatAvatar.style.backgroundImage = 'none';
-    }
-
-    if (peerObj.bannerUrl) {
-      chatTopbarBannerBg.style.backgroundImage = `url('${peerObj.bannerUrl}')`;
-    } else {
-      chatTopbarBannerBg.style.backgroundImage = 'none';
     }
   }
 }
@@ -994,7 +1008,6 @@ function renderMessages(messagesData) {
     const authorName = isSelf ? 'Я' : (msg.senderName || authorUser.name || msg.senderCid);
     const timeFormatted = formatMessageTime(isoDate);
 
-    // Аватарка автора сообщения
     const senderAvatarUrl = authorUser.avatarUrl || '';
     const avatarStyle = senderAvatarUrl ? `background-image: url('${senderAvatarUrl}');` : '';
 
@@ -1969,23 +1982,29 @@ window.addEventListener('paste', (e) => {
   }
 });
 
-// ==================== КАСТОМИЗАЦИЯ ПРОФИЛЯ (АВАТАРКИ И БАННЕРЫ С ПОДДЕРЖКОЙ GIF) ====================
+// ==================== КАСТОМИЗАЦИЯ АВАТАРКИ (GIF / ФОТО) ====================
 
 uploadAvatarBtn.addEventListener('click', () => avatarFileInput.click());
-uploadBannerBtn.addEventListener('click', () => bannerFileInput.click());
 
 avatarFileInput.addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  handleProfileMediaUpload(file, 'avatarUrl');
-  avatarFileInput.value = '';
-});
 
-bannerFileInput.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  handleProfileMediaUpload(file, 'bannerUrl');
-  bannerFileInput.value = '';
+  const maxBytes = 2 * 1024 * 1024;
+  if (file.size > maxBytes) {
+    alert('Файл слишком большой! Выберите гифку или фото до 2 МБ.');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = async (event) => {
+    const base64Data = event.target.result;
+    await usersRef.child(currentAuthCID).update({ avatarUrl: base64Data });
+    renderProfile();
+    renderSidebar();
+  };
+  reader.readAsDataURL(file);
+  avatarFileInput.value = '';
 });
 
 clearAvatarBtn.addEventListener('click', async () => {
@@ -1995,35 +2014,144 @@ clearAvatarBtn.addEventListener('click', async () => {
   renderSidebar();
 });
 
-clearBannerBtn.addEventListener('click', async () => {
-  if (!currentAuthCID) return;
-  await usersRef.child(currentAuthCID).child('bannerUrl').remove();
-  renderProfile();
-  updateTopBarInfo();
-});
+// ==================== ЗАЩИТА ПАРОЛЕМ И САМОУНИЧТОЖЕНИЕ ====================
 
-function handleProfileMediaUpload(file, fieldName) {
-  if (!currentAuthCID) return;
+savePasswordBtn.addEventListener('click', async () => {
+  const p1 = setPassInput1.value;
+  const p2 = setPassInput2.value;
 
-  // Ограничение: до 2 МБ на файл для надежной записи в Firebase RTDB
-  const maxBytes = 2 * 1024 * 1024;
-  if (file.size > maxBytes) {
-    alert('Файл слишком большой! Пожалуйста, выберите гифку или фото весом до 2 МБ.');
+  if (!p1 || p1.length < 3) {
+    alert('Пароль должен быть длиной хотя бы от 3 символов!');
     return;
   }
 
-  // Читаем напрямую как DataURL без Canvas, чтобы полностью сохранить анимацию GIF
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const base64Data = e.target.result;
-    await usersRef.child(currentAuthCID).update({ [fieldName]: base64Data });
-    renderProfile();
-    renderSidebar();
-    if (fieldName === 'bannerUrl') {
-      updateTopBarInfo();
+  if (p1 !== p2) {
+    alert('Введенные пароли не совпадают!');
+    return;
+  }
+
+  await usersRef.child(currentAuthCID).update({
+    accountPass: p1,
+    failedAttempts: 0
+  });
+
+  setPassInput1.value = '';
+  setPassInput2.value = '';
+  alert('Пароль аккаунта успешно установлен!');
+  renderProfile();
+});
+
+removePasswordBtn.addEventListener('click', async () => {
+  if (!confirm('Вы уверены, что хотите снять защиту паролем? Любой, знающий CID, сможет войти.')) return;
+
+  await usersRef.child(currentAuthCID).child('accountPass').remove();
+  await usersRef.child(currentAuthCID).child('failedAttempts').remove();
+  alert('Пароль удален.');
+  renderProfile();
+});
+
+// Чекбокс самоуничтожения — активация предупреждения с таймером
+autoDeleteCheckbox.addEventListener('change', (e) => {
+  if (e.target.checked) {
+    openSelfDestructWarningModal();
+  } else {
+    if (currentAuthCID) {
+      usersRef.child(currentAuthCID).update({
+        selfDestructEnabled: false
+      });
     }
-  };
-  reader.readAsDataURL(file);
+  }
+});
+
+function openSelfDestructWarningModal() {
+  selfDestructWarnModal.classList.remove('hidden');
+  confirmSelfDestructBtn.disabled = true;
+  let remainingSeconds = 9;
+  confirmSelfDestructBtn.textContent = `ПОДОЖДИТЕ (${remainingSeconds})...`;
+
+  if (warnTimerInterval) clearInterval(warnTimerInterval);
+
+  warnTimerInterval = setInterval(() => {
+    remainingSeconds--;
+    if (remainingSeconds > 0) {
+      confirmSelfDestructBtn.textContent = `ПОДОЖДИТЕ (${remainingSeconds})...`;
+    } else {
+      clearInterval(warnTimerInterval);
+      warnTimerInterval = null;
+      confirmSelfDestructBtn.disabled = false;
+      confirmSelfDestructBtn.textContent = 'ДА, Я УВЕРЕН И ВКЛЮЧАЮ';
+    }
+  }, 1000);
+}
+
+confirmSelfDestructBtn.addEventListener('click', async () => {
+  selfDestructWarnModal.classList.add('hidden');
+  const attempts = parseInt(autoDeleteAttemptsInput.value, 10) || 3;
+
+  await usersRef.child(currentAuthCID).update({
+    selfDestructEnabled: true,
+    maxFailedAttempts: attempts,
+    failedAttempts: 0
+  });
+
+  autoDeleteCheckbox.checked = true;
+  alert('Функция самоуничтожения активирована!');
+});
+
+cancelSelfDestructBtn.addEventListener('click', () => {
+  if (warnTimerInterval) {
+    clearInterval(warnTimerInterval);
+    warnTimerInterval = null;
+  }
+  selfDestructWarnModal.classList.add('hidden');
+  autoDeleteCheckbox.checked = false;
+});
+
+saveAutoDeleteConfigBtn.addEventListener('click', async () => {
+  const attempts = parseInt(autoDeleteAttemptsInput.value, 10);
+  if (!attempts || attempts < 1 || attempts > 10) {
+    alert('Укажите число попыток от 1 до 10.');
+    return;
+  }
+
+  await usersRef.child(currentAuthCID).update({
+    maxFailedAttempts: attempts
+  });
+  alert('Число попыток обновлено!');
+});
+
+// Самоликвидация аккаунта в Firebase
+async function executeSelfDestruction(cid) {
+  // 1. Находим ключ CID в allowed_cids
+  let cidDbKey = null;
+  for (const [key, val] of Object.entries(cloudCidsKeys)) {
+    if (val === cid) {
+      cidDbKey = key;
+      break;
+    }
+  }
+
+  if (cidDbKey) {
+    await cidsRef.child(cidDbKey).remove();
+  }
+
+  // 2. Удаляем из users
+  await usersRef.child(cid).remove();
+
+  // 3. Удаляем список user_chats
+  await userChatsRef.child(cid).remove();
+
+  // 4. Очищаем состояние в браузере
+  localStorage.clear();
+  authCidRow.classList.remove('hidden');
+  authPassRow.classList.add('hidden');
+  authHint.classList.add('hidden');
+  authInput.value = '';
+  authPassInput.value = '';
+  pendingLoginCID = null;
+
+  alert('СИСТЕМА БЕЗОПАСНОСТИ: Лимит неверных попыток исчерпан. Аккаунт и переписки полностью уничтожены.');
+  location.reload();
 }
 
 // ==================== ТЕМЫ И МАСШТАБ ====================
@@ -2139,11 +2267,17 @@ function performLogout() {
   cleanupCall();
   currentAuthCID = null;
   activeTargetID = null;
+  pendingLoginCID = null;
   myUserChats = {};
   appScreen.classList.remove('chat-opened');
   appScreen.classList.add('hidden');
   authScreen.classList.remove('hidden');
+
+  authCidRow.classList.remove('hidden');
+  authPassRow.classList.add('hidden');
+  authHint.classList.add('hidden');
   authInput.value = '';
+  authPassInput.value = '';
   authError.classList.add('hidden');
 }
 
@@ -2287,20 +2421,19 @@ confirmDeleteBtn.addEventListener('click', async () => {
   cidPendingDelete = null;
 });
 
-// ==================== ВХОД В ПРИЛОЖЕНИЕ ====================
+// ==================== ВХОД В ПРИЛОЖЕНИЕ (ДВУХЭТАПНЫЙ: CID + ПАРОЛЬ) ====================
 
-async function attemptLogin(inputCID) {
+async function attemptCidLogin(inputCID) {
   const cleanCID = inputCID.trim();
   if (!cleanCID) return;
-  
+
   const snapshot = await cidsRef.once('value');
   const list = snapshot.val() ? Object.values(snapshot.val()) : [];
 
   if (list.includes(cleanCID)) {
     authError.classList.add('hidden');
-    currentAuthCID = cleanCID;
-    localStorage.setItem('coum_active_cid', cleanCID);
-
+    
+    // Проверяем наличие аккаунта и пароля
     const userSnap = await usersRef.child(cleanCID).once('value');
     if (!userSnap.exists()) {
       let initialName = prompt('Введите ваше имя:');
@@ -2308,26 +2441,86 @@ async function attemptLogin(inputCID) {
         initialName = cleanCID.slice(0, 8);
       }
       await usersRef.child(cleanCID).set({ name: initialName.trim(), hideCid: false });
+      completeLoginSuccess(cleanCID);
     } else {
-      const data = userSnap.val();
-      if (data && typeof data.hideCid !== 'undefined') {
-        localStorage.setItem('coum_hide_cid', data.hideCid);
+      const userData = userSnap.val() || {};
+      if (userData.accountPass) {
+        // Требуется пароль!
+        pendingLoginCID = cleanCID;
+        authCidRow.classList.add('hidden');
+        authPassRow.classList.remove('hidden');
+        authHint.classList.remove('hidden');
+        authPassInput.value = '';
+        authPassInput.focus();
+      } else {
+        completeLoginSuccess(cleanCID);
       }
     }
-
-    enterApp();
   } else {
+    authError.textContent = '✕ Неверный CID';
     authError.classList.remove('hidden');
   }
 }
 
-authInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    attemptLogin(authInput.value);
-  } else {
+async function attemptPassLogin(inputPass) {
+  if (!pendingLoginCID) return;
+
+  const userSnap = await usersRef.child(pendingLoginCID).once('value');
+  const userData = userSnap.val() || {};
+
+  if (userData.accountPass === inputPass) {
     authError.classList.add('hidden');
+    // Сбрасываем счетчик неверных попыток при успешном входе
+    await usersRef.child(pendingLoginCID).update({ failedAttempts: 0 });
+    completeLoginSuccess(pendingLoginCID);
+  } else {
+    // Пароль неверный!
+    const isSelfDestruct = !!userData.selfDestructEnabled;
+    const maxAttempts = userData.maxFailedAttempts || 3;
+    const currentFailed = (userData.failedAttempts || 0) + 1;
+
+    await usersRef.child(pendingLoginCID).update({ failedAttempts: currentFailed });
+
+    if (isSelfDestruct && currentFailed >= maxAttempts) {
+      // САМОУНИЧТОЖЕНИЕ
+      await executeSelfDestruction(pendingLoginCID);
+      return;
+    }
+
+    authError.textContent = isSelfDestruct
+      ? `✕ Неверный пароль! Осталось попыток: ${maxAttempts - currentFailed}`
+      : '✕ Неверный пароль!';
+    authError.classList.remove('hidden');
+    authPassInput.value = '';
+    authPassInput.focus();
   }
+}
+
+function completeLoginSuccess(cleanCID) {
+  currentAuthCID = cleanCID;
+  localStorage.setItem('coum_active_cid', cleanCID);
+  pendingLoginCID = null;
+
+  authCidRow.classList.remove('hidden');
+  authPassRow.classList.add('hidden');
+  authHint.classList.add('hidden');
+  authInput.value = '';
+  authPassInput.value = '';
+
+  enterApp();
+}
+
+authInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') attemptCidLogin(authInput.value);
+  else authError.classList.add('hidden');
 });
+authSubmitCidBtn.addEventListener('click', () => attemptCidLogin(authInput.value));
+
+authPassInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') attemptPassLogin(authPassInput.value);
+  else authError.classList.add('hidden');
+});
+authSubmitPassBtn.addEventListener('click', () => attemptPassLogin(authPassInput.value));
 
 function enterApp() {
   authScreen.classList.add('hidden');
@@ -2363,25 +2556,29 @@ function renderProfile() {
   myFixedCidEl.textContent = isHidden ? 'CID: [СКРЫТ]' : currentAuthCID;
   hideCidCheckbox.checked = !!isHidden;
 
-  // Мини-аватарка в профиле сайдбара
+  // Аватарка
   if (userObj.avatarUrl) {
     myMiniAvatarEl.style.backgroundImage = `url('${userObj.avatarUrl}')`;
-  } else {
-    myMiniAvatarEl.style.backgroundImage = 'none';
-  }
-
-  // Превью в модалке настроек
-  if (userObj.avatarUrl) {
     settingsAvatarPreview.style.backgroundImage = `url('${userObj.avatarUrl}')`;
   } else {
+    myMiniAvatarEl.style.backgroundImage = 'none';
     settingsAvatarPreview.style.backgroundImage = 'none';
   }
 
-  if (userObj.bannerUrl) {
-    settingsBannerPreview.style.backgroundImage = `url('${userObj.bannerUrl}')`;
+  // Статус пароля
+  if (userObj.accountPass) {
+    passwordStatusIndicator.textContent = 'УСТАНОВЛЕН (ЗАЩИЩЕНО)';
+    passwordStatusIndicator.style.color = '#22c55e';
+    removePasswordBtn.classList.remove('hidden');
   } else {
-    settingsBannerPreview.style.backgroundImage = 'none';
+    passwordStatusIndicator.textContent = 'НЕ УСТАНОВЛЕН';
+    passwordStatusIndicator.style.color = '#ef4444';
+    removePasswordBtn.classList.add('hidden');
   }
+
+  // Конфиг самоуничтожения
+  autoDeleteCheckbox.checked = !!userObj.selfDestructEnabled;
+  autoDeleteAttemptsInput.value = userObj.maxFailedAttempts || 3;
 }
 
 myFixedCidEl.addEventListener('click', () => {
@@ -2429,6 +2626,11 @@ window.addEventListener('keydown', (e) => {
     if (!createGroupModal.classList.contains('hidden')) createGroupModal.classList.add('hidden');
     if (!groupManageModal.classList.contains('hidden')) groupManageModal.classList.add('hidden');
     if (!groupInviteModal.classList.contains('hidden')) groupInviteModal.classList.add('hidden');
+    if (!selfDestructWarnModal.classList.contains('hidden')) {
+      if (warnTimerInterval) clearInterval(warnTimerInterval);
+      selfDestructWarnModal.classList.add('hidden');
+      autoDeleteCheckbox.checked = false;
+    }
     if (!imageEditorModal.classList.contains('hidden')) imageEditorModal.classList.add('hidden');
     if (!imageViewerModal.classList.contains('hidden')) {
       imageViewerModal.classList.add('hidden');

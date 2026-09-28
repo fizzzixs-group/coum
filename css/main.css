@@ -163,7 +163,7 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .auth-logo-title {
@@ -182,29 +182,49 @@ html, body {
 .auth-input-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
-#auth-input {
+#auth-input, #auth-pass-input {
   background: var(--bg-input);
   border: 1px solid var(--border-color);
   color: var(--text-bright);
   padding: 10px 14px;
   font-size: 15px;
   outline: none;
-  width: 260px;
+  width: 240px;
   text-align: center;
   border-radius: 0;
 }
 
-#auth-input:focus {
+#auth-input:focus, #auth-pass-input:focus {
+  border-color: var(--accent-color);
+}
+
+.auth-arrow-btn {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  color: var(--text-bright);
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.auth-arrow-btn:hover {
+  background: var(--bg-active);
   border-color: var(--accent-color);
 }
 
 #auth-error {
   color: #ef4444;
-  font-size: 20px;
+  font-size: 14px;
   font-weight: bold;
+  text-align: center;
+}
+
+.auth-sub-hint {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 /* Рабочий экран */
@@ -562,22 +582,6 @@ html, body {
   position: relative;
 }
 
-/* Фоновый баннер собеседника в шапке */
-.chat-topbar-banner-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 60px;
-  background-size: cover;
-  background-position: center;
-  opacity: 0.15;
-  pointer-events: none;
-  z-index: 0;
-  mask-image: linear-gradient(to bottom, black 30%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent 100%);
-}
-
 .chat-topbar {
   min-height: 52px;
   padding: 0 16px;
@@ -590,8 +594,7 @@ html, body {
   flex-shrink: 0;
   position: relative;
   z-index: 1;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(8px);
+  background: var(--bg-panel);
 }
 
 .chat-topbar-left {
@@ -791,7 +794,6 @@ html, body {
   text-transform: uppercase;
 }
 
-/* Строка сообщения с мини-аватаркой */
 .msg-row {
   display: flex;
   gap: 8px;
@@ -1003,61 +1005,44 @@ html, body {
   cursor: not-allowed;
 }
 
-/* ==================== КАСТОМИЗАЦИЯ ПРОФИЛЯ В НАСТРОЙКАХ ==================== */
-.profile-preview-card {
-  width: 100%;
-  height: 95px;
-  background: #141619;
-  border: 1px solid var(--border-color);
-  background-size: cover;
-  background-position: center;
-  position: relative;
+/* ==================== НАСТРОЙКИ: АВАТАР И БЕЗОПАСНОСТЬ ==================== */
+.avatar-settings-row {
   display: flex;
-  align-items: flex-end;
-  padding: 10px 14px;
-}
-
-.profile-preview-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.3);
-  pointer-events: none;
-}
-
-.profile-avatar-preview-wrap {
-  position: relative;
-  z-index: 1;
+  align-items: center;
+  gap: 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  padding: 12px;
 }
 
 .profile-avatar-preview {
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: var(--bg-hover);
   border: 2px solid var(--accent-color);
   background-size: cover;
   background-position: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  flex-shrink: 0;
 }
 
-.profile-upload-actions {
+.avatar-controls-col {
   display: flex;
-  gap: 10px;
-  margin-top: 6px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.upload-btn-group {
+.btn-group-row {
   display: flex;
+  gap: 8px;
   align-items: center;
-  gap: 4px;
 }
 
 .btn-tiny-danger {
   background: #450a0a;
   border: 1px solid #7f1d1d;
   color: #f87171;
-  padding: 8px 10px;
+  padding: 8px 12px;
   font-size: 11px;
   cursor: pointer;
 }
@@ -1065,6 +1050,43 @@ html, body {
 .btn-tiny-danger:hover {
   background: #7f1d1d;
   color: #fff;
+}
+
+.security-card {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.security-status-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.password-inputs-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attempts-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.attempts-input {
+  width: 55px;
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  color: var(--text-bright);
+  padding: 5px;
+  text-align: center;
 }
 
 /* ==================== МОДАЛКИ ГРУПП ==================== */
@@ -1263,6 +1285,11 @@ html, body {
   padding: 8px;
   font-size: 11px;
   cursor: pointer;
+}
+
+.btn-danger-solid:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .sub-hint-text {
@@ -1894,8 +1921,8 @@ html, body {
   background: var(--bg-panel);
   border: 1px solid #7f1d1d;
   width: 90%;
-  max-width: 380px;
-  padding: 16px;
+  max-width: 420px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1910,7 +1937,7 @@ html, body {
 .confirm-desc {
   font-size: 12px;
   color: var(--text-main);
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 #delete-phrase-input {

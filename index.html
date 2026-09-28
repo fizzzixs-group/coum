@@ -10,21 +10,32 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#000000">
 
-  <link rel="stylesheet" href="css/main.css?v=4">
+  <link rel="stylesheet" href="css/main.css?v=5">
 </head>
 <body>
 
   <!-- АУДИО ТЕЛЕФОННОГО ПОТОКА -->
   <audio id="remote-audio" autoplay playsinline></audio>
 
-  <!-- ЭКРАН АВТОРИЗАЦИИ ПО CID -->
+  <!-- ЭКРАН АВТОРИЗАЦИИ ПО CID И ПАРОЛЮ -->
   <div id="auth-screen" class="screen">
     <div class="auth-box">
       <div id="auth-logo" class="auth-logo-title">coum&</div>
-      <div class="auth-input-row">
+      
+      <!-- Этап 1: Ввод CID -->
+      <div class="auth-input-row" id="auth-cid-row">
         <input type="password" id="auth-input" autofocus autocomplete="off" placeholder="CID" />
-        <div id="auth-error" class="hidden">✕</div>
+        <button type="button" id="auth-submit-cid-btn" class="auth-arrow-btn">→</button>
       </div>
+
+      <!-- Этап 2: Ввод пароля (если установлен на аккаунте) -->
+      <div class="auth-input-row hidden" id="auth-pass-row">
+        <input type="password" id="auth-pass-input" autocomplete="off" placeholder="ПАРОЛЬ" />
+        <button type="button" id="auth-submit-pass-btn" class="auth-arrow-btn">→</button>
+      </div>
+
+      <div id="auth-error" class="hidden">✕</div>
+      <div id="auth-hint" class="auth-sub-hint hidden">Введите пароль аккаунта</div>
     </div>
   </div>
 
@@ -80,9 +91,6 @@
 
     <!-- Область чата -->
     <main class="chat-area" id="app-chat-area">
-      <!-- Баннер шапки чата (заполняется баннером собеседника или группы) -->
-      <div id="chat-topbar-banner-bg" class="chat-topbar-banner-bg"></div>
-
       <div class="chat-topbar">
         <div class="chat-topbar-left">
           <button id="mobile-back-btn" class="mobile-back-btn">←</button>
@@ -93,14 +101,12 @@
           </div>
         </div>
         <div class="chat-topbar-right">
-          <!-- Кнопка участников / настроек группы -->
           <button id="group-manage-btn" class="call-action-btn hidden" title="Настройки группы">👥 ИНФО</button>
-          <!-- Кнопка голосового звонка -->
           <button id="start-call-btn" class="call-action-btn" title="Голосовой звонок">📞</button>
         </div>
       </div>
 
-      <!-- Плашка закрепленного сообщения (кликабельна) -->
+      <!-- Плашка закрепленного сообщения -->
       <div id="pinned-bar" class="pinned-bar hidden" title="Нажмите, чтобы перейти к сообщению">
         <div class="pinned-info">
           <span class="pinned-label" id="pinned-type-label">ЗАКРЕП:</span>
@@ -302,7 +308,7 @@
     <img id="viewer-img" src="" alt="Изображение" />
   </div>
 
-  <!-- МОДАЛКА НАСТРОЕК (ВКЛЮЧАЯ АВАТАРКУ И БАННЕР) -->
+  <!-- МОДАЛКА НАСТРОЕК -->
   <div id="settings-modal" class="modal-overlay hidden">
     <div class="settings-window">
       <div class="settings-header">
@@ -310,31 +316,59 @@
         <button id="settings-close-btn">[X]</button>
       </div>
 
-      <!-- Кастомизация профиля: Баннер и Аватарка (поддержка GIF) -->
+      <!-- Кастомизация аватарки (поддержка GIF) -->
       <div class="settings-section">
-        <label class="settings-label">ПРОФИЛЬ: БАННЕР И АВАТАРКА (GIF / ФОТО):</label>
-        
-        <div class="profile-preview-card" id="settings-banner-preview">
-          <div class="profile-preview-overlay"></div>
-          <div class="profile-avatar-preview-wrap">
-            <div class="profile-avatar-preview" id="settings-avatar-preview"></div>
-          </div>
-        </div>
-
-        <div class="profile-upload-actions">
-          <div class="upload-btn-group">
+        <label class="settings-label">АВАТАРКА ПРОФИЛЯ (GIF / ФОТО ДО 2 МБ):</label>
+        <div class="avatar-settings-row">
+          <div class="profile-avatar-preview" id="settings-avatar-preview"></div>
+          <div class="avatar-controls-col">
             <input type="file" id="avatar-file-input" accept="image/*" class="hidden">
-            <button type="button" id="upload-avatar-btn" class="btn-secondary">СМЕНИТЬ АВУ</button>
-            <button type="button" id="clear-avatar-btn" class="btn-tiny-danger" title="Удалить аватар">✕</button>
-          </div>
-
-          <div class="upload-btn-group">
-            <input type="file" id="banner-file-input" accept="image/*" class="hidden">
-            <button type="button" id="upload-banner-btn" class="btn-secondary">СМЕНИТЬ БАННЕР</button>
-            <button type="button" id="clear-banner-btn" class="btn-tiny-danger" title="Удалить баннер">✕</button>
+            <div class="btn-group-row">
+              <button type="button" id="upload-avatar-btn" class="btn-secondary">СМЕНИТЬ АВАТАР</button>
+              <button type="button" id="clear-avatar-btn" class="btn-tiny-danger" title="Удалить аватар">✕</button>
+            </div>
+            <div class="sub-hint-text">Анимированные GIF поддерживаются и крутятся у всех участников.</div>
           </div>
         </div>
-        <div class="sub-hint-text">Поддерживаются анимированные GIF и фото до 2 МБ. Анимация проигрывается у всех участников.</div>
+      </div>
+
+      <!-- Защита паролем -->
+      <div class="settings-section">
+        <label class="settings-label">ЗАЩИТА АККАУНТА ПАРОЛЕМ:</label>
+        <div class="security-card">
+          <div class="security-status-line">
+            <span>Статус пароля:</span>
+            <strong id="password-status-indicator" style="color:#ef4444;">НЕ УСТАНОВЛЕН</strong>
+          </div>
+          
+          <div class="password-inputs-box">
+            <input type="password" id="set-pass-input1" class="text-input" placeholder="Введите пароль..." autocomplete="off">
+            <input type="password" id="set-pass-input2" class="text-input" placeholder="Повторите пароль..." autocomplete="off">
+            <div class="btn-group-row">
+              <button type="button" id="save-password-btn" class="btn-primary">УСТАНОВИТЬ ПАРОЛЬ</button>
+              <button type="button" id="remove-password-btn" class="btn-tiny-danger hidden">СБРОСИТЬ ПАРОЛЬ</button>
+            </div>
+          </div>
+          <div class="sub-hint-text">Если пароль задан, войти по CID без пароля будет невозможно.</div>
+        </div>
+      </div>
+
+      <!-- Самоуничтожение аккаунта при неверных попытках ввода пароля -->
+      <div class="settings-section">
+        <label class="settings-label">САМОУНИЧТОЖЕНИЕ ПРИ НЕВЕРНОМ ПАРОЛЕ:</label>
+        <div class="security-card">
+          <label class="checkbox-label" for="auto-delete-checkbox">
+            <input type="checkbox" id="auto-delete-checkbox">
+            <span>УДАЛИТЬ АККАУНТ И ВСЕ ЧАТЫ ПРИ НЕВЕРНОМ ВВОДЕ ПАРОЛЯ</span>
+          </label>
+          
+          <div class="attempts-selector-row" id="attempts-selector-wrap">
+            <span>Лимит неверных попыток подряд:</span>
+            <input type="number" id="auto-delete-attempts-input" min="1" max="10" value="3" class="attempts-input">
+            <button type="button" id="save-auto-delete-config-btn" class="btn-secondary">СОХРАНИТЬ</button>
+          </div>
+          <div class="sub-hint-text">Если злоумышленник или вы введете пароль неверно указанное число раз, аккаунт и вся личная база удалятся навсегда.</div>
+        </div>
       </div>
 
       <!-- Приватность CID -->
@@ -404,6 +438,22 @@
     </div>
   </div>
 
+  <!-- МОДАЛКА ПРЕДУПРЕЖДЕНИЯ С ТАЙМЕРОМ 9 СЕКУНД (САМОУНИЧТОЖЕНИЕ) -->
+  <div id="self-destruct-warn-modal" class="modal-overlay hidden">
+    <div class="confirm-window">
+      <div class="confirm-title">⚠️ СМЕРТЕЛЬНОЕ ПРЕДУПРЕЖДЕНИЕ</div>
+      <div class="confirm-desc">
+        Вы точно это хотите сделать?<br><br>
+        Если вы включите эту функцию, выйдете из аккаунта и попытаетесь зайти, не зная пароля, ваш аккаунт и ваши переписки <strong>БУДУТ УДАЛЕНЫ НАВСЕГДА</strong> без шанса на восстановление.<br><br>
+        Вы уверены, что хотите продолжить?
+      </div>
+      <div class="confirm-actions">
+        <button id="confirm-self-destruct-btn" class="btn-danger-solid" disabled>ПОДОЖДИТЕ (9)...</button>
+        <button id="cancel-self-destruct-btn" class="btn-secondary">ОТМЕНА</button>
+      </div>
+    </div>
+  </div>
+
   <!-- МОДАЛКА ПАРОЛЯ АДМИНА -->
   <div id="admin-auth-modal" class="modal-overlay hidden">
     <div class="modal-window">
@@ -430,7 +480,7 @@
     </div>
   </div>
 
-  <!-- ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ ПОЛЬЗОВАТЕЛЯ -->
+  <!-- ПОДТВЕРЖДЕНИЕ РУЧНОГО УДАЛЕНИЯ ПОЛЬЗОВАТЕЛЯ -->
   <div id="delete-confirm-modal" class="modal-overlay hidden">
     <div class="confirm-window">
       <div class="confirm-title">УДАЛЕНИЕ CID НАВСЕГДА</div>
@@ -451,6 +501,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
   
-  <script src="js/app.js?v=4"></script>
+  <script src="js/app.js?v=5"></script>
 </body>
 </html>
