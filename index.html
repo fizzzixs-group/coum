@@ -4,44 +4,42 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>coum&</title>
-
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#000000">
-
-  <link rel="stylesheet" href="css/main.css?v=5">
+  <link rel="stylesheet" href="css/main.css?v=6">
 </head>
 <body>
 
-  <!-- АУДИО ТЕЛЕФОННОГО ПОТОКА -->
   <audio id="remote-audio" autoplay playsinline></audio>
 
-  <!-- ЭКРАН АВТОРИЗАЦИИ ПО CID И ПАРОЛЮ -->
+  <!-- ЭКРАН АВТОРИЗАЦИИ -->
   <div id="auth-screen" class="screen">
     <div class="auth-box">
       <div id="auth-logo" class="auth-logo-title">coum&</div>
-      
-      <!-- Этап 1: Ввод CID -->
+
       <div class="auth-input-row" id="auth-cid-row">
         <input type="password" id="auth-input" autofocus autocomplete="off" placeholder="CID" />
-        <button type="button" id="auth-submit-cid-btn" class="auth-arrow-btn">→</button>
+        <button type="button" id="auth-submit-cid-btn" class="auth-arrow-btn" aria-label="Войти">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
       </div>
 
-      <!-- Этап 2: Ввод пароля (если установлен на аккаунте) -->
       <div class="auth-input-row hidden" id="auth-pass-row">
         <input type="password" id="auth-pass-input" autocomplete="off" placeholder="ПАРОЛЬ" />
-        <button type="button" id="auth-submit-pass-btn" class="auth-arrow-btn">→</button>
+        <button type="button" id="auth-submit-pass-btn" class="auth-arrow-btn" aria-label="Войти">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
       </div>
 
-      <div id="auth-error" class="hidden">✕</div>
+      <div id="auth-error" class="hidden"></div>
       <div id="auth-hint" class="auth-sub-hint hidden">Введите пароль аккаунта</div>
     </div>
   </div>
 
   <!-- РАБОЧИЙ ЭКРАН -->
   <div id="app-screen" class="screen hidden">
-    <!-- Левая панель (список чатов и поиск) -->
     <aside class="sidebar" id="app-sidebar">
       <div class="sidebar-top">
         <div class="user-profile-header">
@@ -51,49 +49,54 @@
             <div class="user-fixed-cid" id="my-fixed-cid" title="Нажмите, чтобы скопировать">CID: ---</div>
           </div>
         </div>
-        <button id="edit-name-btn">[ИЗМЕНИТЬ]</button>
+        <button id="edit-name-btn" title="Изменить имя">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+        </button>
       </div>
 
-      <!-- Блок поиска -->
       <div class="sidebar-search-box">
         <div class="search-input-wrapper">
-          <input type="text" id="contact-search-input" placeholder="Поиск контактов..." autocomplete="off">
-          <button type="button" id="search-clear-btn" class="hidden">✕</button>
+          <input type="text" id="contact-search-input" placeholder="Поиск..." autocomplete="off">
+          <button type="button" id="search-clear-btn" class="hidden" aria-label="Очистить">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
         </div>
         <div class="search-filters">
-          <span class="search-filter-label">РЕЖИМ:</span>
           <button type="button" class="search-filter-btn active" id="filter-name-btn" data-mode="name">НИК</button>
           <button type="button" class="search-filter-btn" id="filter-cid-btn" data-mode="cid">CID</button>
         </div>
       </div>
 
-      <!-- Заголовок секции списка -->
       <div class="sidebar-section-header">
-        <span class="sidebar-section-title" id="sidebar-section-title">ВАШИ ДИАЛОГИ</span>
+        <span class="sidebar-section-title" id="sidebar-section-title">ДИАЛОГИ</span>
       </div>
 
-      <!-- Контейнер для активных чатов, групп или результатов поиска -->
       <div class="peers-list" id="peers-list"></div>
 
-      <!-- Нижняя панель: НАСТРОЙКИ и ПЛЮСИК РЯДОМ -->
       <div class="sidebar-bottom">
         <div class="sidebar-actions-row">
-          <button type="button" id="open-settings-btn" class="sidebar-settings-btn">[НАСТРОЙКИ]</button>
+          <button type="button" id="open-settings-btn" class="sidebar-settings-btn">НАСТРОЙКИ</button>
           <div class="add-action-wrapper">
-            <button type="button" id="sidebar-plus-btn" class="sidebar-plus-btn" title="Создать...">+</button>
+            <button type="button" id="sidebar-plus-btn" class="sidebar-plus-btn" title="Создать...">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
             <div id="plus-dropdown-menu" class="plus-dropdown-menu hidden">
-              <button type="button" id="dropdown-create-group-btn" class="dropdown-item">👥 Создать группу</button>
+              <button type="button" id="dropdown-create-group-btn" class="dropdown-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                Создать группу
+              </button>
             </div>
           </div>
         </div>
       </div>
     </aside>
 
-    <!-- Область чата -->
     <main class="chat-area" id="app-chat-area">
       <div class="chat-topbar">
         <div class="chat-topbar-left">
-          <button id="mobile-back-btn" class="mobile-back-btn">←</button>
+          <button id="mobile-back-btn" class="mobile-back-btn" aria-label="Назад">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          </button>
           <div class="chat-header-avatar" id="active-chat-avatar"></div>
           <div class="chat-header-info">
             <span id="active-peer-header">ВЫБЕРИТЕ ДИАЛОГ</span>
@@ -101,22 +104,28 @@
           </div>
         </div>
         <div class="chat-topbar-right">
-          <button id="group-manage-btn" class="call-action-btn hidden" title="Настройки группы">👥 ИНФО</button>
-          <button id="start-group-call-btn" class="call-action-btn hidden" title="Групповой звонок (до 3 чел)">👥📞</button>
-          <button id="start-call-btn" class="call-action-btn" title="Голосовой звонок">📞</button>
+          <button id="group-manage-btn" class="call-action-btn hidden" title="Информация о группе">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          </button>
+          <button id="start-group-call-btn" class="call-action-btn hidden" title="Групповой звонок">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          </button>
+          <button id="start-call-btn" class="call-action-btn" title="Голосовой звонок">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+          </button>
         </div>
       </div>
 
-      <!-- Плашка закрепленного сообщения -->
       <div id="pinned-bar" class="pinned-bar hidden" title="Нажмите, чтобы перейти к сообщению">
         <div class="pinned-info">
           <span class="pinned-label" id="pinned-type-label">ЗАКРЕП:</span>
           <span class="pinned-text" id="pinned-text-preview">---</span>
         </div>
-        <button id="unpin-btn" class="unpin-action-btn" title="Открепить сообщение">✕</button>
+        <button id="unpin-btn" class="unpin-action-btn" title="Открепить">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
       </div>
 
-      <!-- Баннер антиспама и инвайтов -->
       <div id="antispam-request-banner" class="antispam-banner hidden">
         <div class="antispam-text" id="antispam-banner-text">Новый контакт отправил запрос на переписку.</div>
         <div class="antispam-actions">
@@ -126,32 +135,34 @@
       </div>
 
       <div class="messages-viewport" id="messages-container"></div>
-      
-      <!-- Панель статуса редактирования сообщения -->
+
       <div id="edit-state-bar" class="edit-state-bar hidden">
         <span class="edit-state-label">Редактирование сообщения...</span>
         <button type="button" id="cancel-edit-btn" class="cancel-edit-btn">ОТМЕНА</button>
       </div>
 
-      <!-- Форма отправки сообщений и картинок -->
       <form class="message-form" id="message-form">
         <input type="file" id="image-file-input" accept="image/*" class="hidden" />
-        <button type="button" id="attach-btn" title="Прикрепить скриншот/фото">📎</button>
-        <input type="text" id="message-input" autocomplete="off" placeholder="Сообщение или вставьте скриншот (Ctrl+V)..." />
-        <button type="submit" id="send-msg-btn">ОТПРАВИТЬ</button>
+        <button type="button" id="attach-btn" title="Прикрепить фото" aria-label="Прикрепить">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+        </button>
+        <input type="text" id="message-input" autocomplete="off" placeholder="Сообщение..." />
+        <button type="submit" id="send-msg-btn" aria-label="Отправить">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
       </form>
     </main>
   </div>
 
-  <!-- МОДАЛКА СОЗДАНИЯ ГРУППЫ -->
+  <!-- СОЗДАНИЕ ГРУППЫ -->
   <div id="create-group-modal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-card-header">
-        <span>СОЗДАНИЕ НОВОЙ ГРУППЫ</span>
-        <button type="button" class="modal-close-btn" id="close-create-group-btn">[X]</button>
+        <span>НОВАЯ ГРУППА</span>
+        <button type="button" class="modal-close-btn" id="close-create-group-btn">✕</button>
       </div>
       <div class="modal-card-body">
-        <label class="input-field-label">НАЗВАНИЕ ГРУППЫ:</label>
+        <label class="input-field-label">НАЗВАНИЕ:</label>
         <input type="text" id="new-group-name-input" class="text-input" placeholder="Введите название..." autocomplete="off" maxlength="32">
       </div>
       <div class="modal-card-actions">
@@ -160,18 +171,18 @@
     </div>
   </div>
 
-  <!-- МОДАЛКА УПРАВЛЕНИЯ ГРУППОЙ -->
+  <!-- УПРАВЛЕНИЕ ГРУППОЙ -->
   <div id="group-manage-modal" class="modal-overlay hidden">
     <div class="modal-card large">
       <div class="modal-card-header">
         <span id="group-manage-title">ИНФОРМАЦИЯ О ГРУППЕ</span>
-        <button type="button" class="modal-close-btn" id="close-group-manage-btn">[X]</button>
+        <button type="button" class="modal-close-btn" id="close-group-manage-btn">✕</button>
       </div>
       <div class="modal-card-body">
         <div class="group-gid-badge" id="group-manage-gid" title="Кликните для копирования">GID: ---</div>
-        
+
         <div class="settings-section" id="group-rename-section">
-          <label class="input-field-label">НАЗВАНИЕ ГРУППЫ:</label>
+          <label class="input-field-label">НАЗВАНИЕ:</label>
           <div class="input-row-flex">
             <input type="text" id="group-rename-input" class="text-input" autocomplete="off" maxlength="32">
             <button type="button" id="save-group-name-btn" class="btn-secondary">СОХРАНИТЬ</button>
@@ -188,21 +199,21 @@
 
         <div class="danger-zone-group">
           <button type="button" id="leave-group-btn" class="btn-danger-outline">ВЫЙТИ ИЗ ГРУППЫ</button>
-          <button type="button" id="delete-group-btn" class="btn-danger-solid hidden">УДАЛИТЬ ГРУППУ НАВСЕГДА</button>
+          <button type="button" id="delete-group-btn" class="btn-danger-solid hidden">УДАЛИТЬ ГРУППУ</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- МОДАЛКА ПРИГЛАШЕНИЯ ИЗ СПИСКА АКТИВНЫХ ЧАТОВ -->
+  <!-- ПРИГЛАШЕНИЕ В ГРУППУ -->
   <div id="group-invite-modal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-card-header">
         <span>ПРИГЛАСИТЬ В ГРУППУ</span>
-        <button type="button" class="modal-close-btn" id="close-invite-modal-btn">[X]</button>
+        <button type="button" class="modal-close-btn" id="close-invite-modal-btn">✕</button>
       </div>
       <div class="modal-card-body">
-        <div class="sub-hint-text">Добавить можно только пользователей из ваших принятых диалогов:</div>
+        <div class="sub-hint-text">Только из ваших принятых диалогов:</div>
         <div class="invite-candidates-list" id="invite-candidates-list"></div>
       </div>
     </div>
@@ -229,7 +240,7 @@
     <button type="button" class="context-menu-item danger" id="ctx-delete-btn">Удалить у всех</button>
   </div>
 
-  <!-- ОКНО ВХОДЯЩЕГО ВЫЗОВА -->
+  <!-- ВХОДЯЩИЙ ЗВОНОК -->
   <div id="incoming-call-modal" class="modal-overlay hidden">
     <div class="call-window incoming-window">
       <div class="call-title">ВХОДЯЩИЙ ЗВОНОК</div>
@@ -241,7 +252,7 @@
     </div>
   </div>
 
-  <!-- ОКНО АКТИВНОГО / ИСХОДЯЩЕГО ЗВОНКА -->
+  <!-- АКТИВНЫЙ ЗВОНОК -->
   <div id="active-call-modal" class="modal-overlay hidden">
     <div class="call-window">
       <div class="call-status" id="call-status-label">ВЫЗОВ...</div>
@@ -254,21 +265,25 @@
     </div>
   </div>
 
-  <!-- ГРУППОВОЙ ЗВОНОК (MESH, до 3 чел) -->
+  <!-- ГРУППОВОЙ ЗВОНОК -->
   <div id="group-call-modal" class="modal-overlay hidden">
     <div class="grp-call-window">
       <div class="grp-call-header">
         <div class="grp-call-title">ГРУППОВОЙ ЗВОНОК</div>
+        <button class="grp-call-close-btn" onclick="window.grpCallManager.cleanup()" aria-label="Закрыть">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
         <div class="grp-call-timer" id="grp-call-timer">00:00</div>
       </div>
       <div class="grp-participants" id="grp-participants-container"></div>
       <div class="grp-call-actions">
+        <button id="grp-mute-btn" class="call-btn-mute">МИКРОФОН: ВКЛ</button>
         <button id="grp-end-call-btn" class="call-btn-reject">ЗАВЕРШИТЬ</button>
       </div>
     </div>
   </div>
 
-  <!-- ВСТРОЕННЫЙ РЕДАКТОР ИЗОБРАЖЕНИЙ -->
+  <!-- РЕДАКТОР ИЗОБРАЖЕНИЙ -->
   <div id="image-editor-modal" class="modal-overlay hidden">
     <div class="editor-window">
       <div class="editor-toolbar">
@@ -276,13 +291,15 @@
           <button type="button" class="tool-btn active" id="tool-brush" title="Кисть">КИСТЬ</button>
           <button type="button" class="tool-btn" id="tool-highlighter" title="Маркер">МАРКЕР</button>
           <button type="button" class="tool-btn" id="tool-eraser" title="Ластик">ЛАСТИК</button>
-          <button type="button" class="tool-btn" id="tool-text" title="Добавить надпись">[+ ТЕКСТ]</button>
-          <button type="button" class="tool-btn" id="tool-crop" title="Обрезать картинку">КАДРИРОВАНИЕ</button>
+          <button type="button" class="tool-btn" id="tool-text" title="Текст">ТЕКСТ</button>
+          <button type="button" class="tool-btn" id="tool-crop" title="Обрезать">ОБРЕЗАТЬ</button>
         </div>
-
         <div class="tool-group">
-          <button type="button" class="tool-btn" id="editor-undo-btn" title="Отменить действие">↺</button>
-          <button type="button" class="tool-btn danger" id="editor-cancel-btn">✕</button>
+          <button type="button" class="tool-btn" id="editor-undo-btn" title="Отменить">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+          </button>
+          <button type="button" class="tool-btn" id="editor-reset-zoom-btn" title="Сбросить зум">1:1</button>
+          <button type="button" class="tool-btn danger" id="editor-cancel-btn" title="Закрыть">✕</button>
         </div>
       </div>
 
@@ -291,7 +308,6 @@
           <span>РАЗМЕР:</span>
           <input type="range" id="brush-size-input" min="2" max="50" value="6" />
         </div>
-
         <div class="color-presets">
           <div class="palette-dot active" style="background:#ffffff;" data-color="#ffffff"></div>
           <div class="palette-dot" style="background:#ef4444;" data-color="#ef4444"></div>
@@ -305,101 +321,120 @@
       </div>
 
       <div class="editor-canvas-container" id="editor-canvas-container">
-        <canvas id="editor-canvas"></canvas>
-        <div id="crop-selection-box" class="hidden"></div>
+        <div class="editor-viewport" id="editor-viewport">
+          <canvas id="editor-canvas"></canvas>
+        </div>
+        <div id="crop-overlay" class="crop-overlay hidden">
+          <div class="crop-shade crop-shade-top"></div>
+          <div class="crop-shade crop-shade-bottom"></div>
+          <div class="crop-shade crop-shade-left"></div>
+          <div class="crop-shade crop-shade-right"></div>
+          <div id="crop-selection-box" class="crop-selection-box">
+            <div class="crop-grid-line crop-grid-v1"></div>
+            <div class="crop-grid-line crop-grid-v2"></div>
+            <div class="crop-grid-line crop-grid-h1"></div>
+            <div class="crop-grid-line crop-grid-h2"></div>
+            <div class="crop-handle crop-handle-nw" data-handle="nw"></div>
+            <div class="crop-handle crop-handle-ne" data-handle="ne"></div>
+            <div class="crop-handle crop-handle-sw" data-handle="sw"></div>
+            <div class="crop-handle crop-handle-se" data-handle="se"></div>
+            <div class="crop-handle crop-handle-n" data-handle="n"></div>
+            <div class="crop-handle crop-handle-s" data-handle="s"></div>
+            <div class="crop-handle crop-handle-w" data-handle="w"></div>
+            <div class="crop-handle crop-handle-e" data-handle="e"></div>
+          </div>
+        </div>
+        <div class="editor-zoom-indicator" id="editor-zoom-indicator">100%</div>
       </div>
 
       <div class="editor-actions">
         <button type="button" id="editor-quick-send-btn" class="editor-btn-secondary">ОТПРАВИТЬ КАК ЕСТЬ</button>
         <button type="button" id="editor-finish-crop-btn" class="editor-btn-accent hidden">ПРИМЕНИТЬ ОБРЕЗКУ</button>
-        <button type="button" id="editor-send-btn" class="editor-btn-primary">ГОТОВО И ОТПРАВИТЬ</button>
+        <button type="button" id="editor-send-btn" class="editor-btn-primary">ГОТОВО</button>
       </div>
     </div>
   </div>
 
-  <!-- ПРОСМОТР КАРТИНКИ НА ВЕСЬ ЭКРАН -->
+  <!-- ПРОСМОТР КАРТИНКИ -->
   <div id="image-viewer-modal" class="modal-overlay hidden">
-    <button id="close-viewer-btn" class="viewer-close-btn">[ЗАКРЫТЬ]</button>
-    <img id="viewer-img" src="" alt="Изображение" />
+    <button id="close-viewer-btn" class="viewer-close-btn">ЗАКРЫТЬ</button>
+    <div class="viewer-stage" id="viewer-stage">
+      <img id="viewer-img" src="" alt="Изображение" draggable="false" />
+    </div>
+    <div class="viewer-zoom-indicator" id="viewer-zoom-indicator">100%</div>
   </div>
 
-  <!-- МОДАЛКА НАСТРОЕК -->
+  <!-- НАСТРОЙКИ -->
   <div id="settings-modal" class="modal-overlay hidden">
     <div class="settings-window">
       <div class="settings-header">
-        <span>НАСТРОЙКИ ПРОФИЛЯ</span>
-        <button id="settings-close-btn">[X]</button>
+        <span>НАСТРОЙКИ</span>
+        <button id="settings-close-btn">✕</button>
       </div>
 
-      <!-- Кастомизация аватарки (поддержка GIF) -->
       <div class="settings-section">
-        <label class="settings-label">АВАТАРКА ПРОФИЛЯ (GIF / ФОТО ДО 2 МБ):</label>
+        <label class="settings-label">АВАТАРКА (GIF / ФОТО ДО 2 МБ)</label>
         <div class="avatar-settings-row">
           <div class="profile-avatar-preview" id="settings-avatar-preview"></div>
           <div class="avatar-controls-col">
             <input type="file" id="avatar-file-input" accept="image/*" class="hidden">
             <div class="btn-group-row">
-              <button type="button" id="upload-avatar-btn" class="btn-secondary">СМЕНИТЬ АВАТАР</button>
-              <button type="button" id="clear-avatar-btn" class="btn-tiny-danger" title="Удалить аватар">✕</button>
+              <button type="button" id="upload-avatar-btn" class="btn-secondary">СМЕНИТЬ</button>
+              <button type="button" id="clear-avatar-btn" class="btn-tiny-danger">УДАЛИТЬ</button>
             </div>
-            <div class="sub-hint-text">Анимированные GIF поддерживаются и крутятся у всех участников.</div>
+            <div class="sub-hint-text">Поддерживаются анимированные GIF.</div>
           </div>
         </div>
       </div>
 
-      <!-- Защита паролем -->
       <div class="settings-section">
-        <label class="settings-label">ЗАЩИТА АККАУНТА ПАРОЛЕМ:</label>
+        <label class="settings-label">ЗАЩИТА ПАРОЛЕМ</label>
         <div class="security-card">
           <div class="security-status-line">
-            <span>Статус пароля:</span>
+            <span>Статус:</span>
             <strong id="password-status-indicator" style="color:#ef4444;">НЕ УСТАНОВЛЕН</strong>
           </div>
-          
           <div class="password-inputs-box">
-            <input type="password" id="set-pass-input1" class="text-input" placeholder="Введите пароль..." autocomplete="off">
-            <input type="password" id="set-pass-input2" class="text-input" placeholder="Повторите пароль..." autocomplete="off">
+            <input type="password" id="set-pass-input1" class="text-input" placeholder="Пароль..." autocomplete="off">
+            <input type="password" id="set-pass-input2" class="text-input" placeholder="Повторите..." autocomplete="off">
             <div class="btn-group-row">
-              <button type="button" id="save-password-btn" class="btn-primary">УСТАНОВИТЬ ПАРОЛЬ</button>
-              <button type="button" id="remove-password-btn" class="btn-tiny-danger hidden">СБРОСИТЬ ПАРОЛЬ</button>
+              <button type="button" id="save-password-btn" class="btn-primary">УСТАНОВИТЬ</button>
+              <button type="button" id="remove-password-btn" class="btn-tiny-danger hidden">СБРОСИТЬ</button>
             </div>
           </div>
-          <div class="sub-hint-text">Если пароль задан, войти по CID без пароля будет невозможно.</div>
+          <div class="sub-hint-text">Без пароля войти по CID будет невозможно.</div>
         </div>
       </div>
 
-      <!-- Самоуничтожение аккаунта при неверных попытках ввода пароля -->
       <div class="settings-section">
-        <label class="settings-label">САМОУНИЧТОЖЕНИЕ ПРИ НЕВЕРНОМ ПАРОЛЕ:</label>
+        <label class="settings-label">САМОУНИЧТОЖЕНИЕ</label>
         <div class="security-card">
           <label class="checkbox-label" for="auto-delete-checkbox">
             <input type="checkbox" id="auto-delete-checkbox">
-            <span>УДАЛИТЬ АККАУНТ И ВСЕ ЧАТЫ ПРИ НЕВЕРНОМ ВВОДЕ ПАРОЛЯ</span>
+            <span>УДАЛИТЬ АККАУНТ ПРИ НЕВЕРНОМ ПАРОЛЕ</span>
           </label>
-          
-          <div class="attempts-selector-row" id="attempts-selector-wrap">
-            <span>Лимит неверных попыток подряд:</span>
+          <div class="attempts-selector-row">
+            <span>Лимит попыток:</span>
             <input type="number" id="auto-delete-attempts-input" min="1" max="10" value="3" class="attempts-input">
             <button type="button" id="save-auto-delete-config-btn" class="btn-secondary">СОХРАНИТЬ</button>
           </div>
-          <div class="sub-hint-text">Если злоумышленник или вы введете пароль неверно указанное число раз, аккаунт и вся личная база удалятся навсегда.</div>
+          <div class="sub-hint-text">Аккаунт и переписки удалятся навсегда.</div>
         </div>
       </div>
 
-      <!-- Приватность CID -->
       <div class="settings-section">
-        <label class="settings-label">ПРИВАТНОСТЬ И БЕЗОПАСНОСТЬ:</label>
+        <label class="settings-label">ПРИВАТНОСТЬ</label>
         <div class="privacy-toggle-box">
           <label class="checkbox-label" for="hide-cid-checkbox">
             <input type="checkbox" id="hide-cid-checkbox">
-            <span>СКРЫВАТЬ СВОЙ CID В ПРОФИЛЕ И ПОИСКЕ</span>
+            <span>СКРЫВАТЬ CID В ПРОФИЛЕ И ПОИСКЕ</span>
           </label>
-          <div class="sub-hint-text">Ваш CID не будет виден в профиле, и вас нельзя будет найти по точному CID. Вход в аккаунт по нему по-прежнему работает.</div>
+          <div class="sub-hint-text">Вас нельзя будет найти по точному CID.</div>
         </div>
       </div>
 
       <div class="settings-section">
-        <label class="settings-label">МАСШТАБ ИНТЕРФЕЙСА:</label>
+        <label class="settings-label">МАСШТАБ</label>
         <div class="scale-options">
           <button class="scale-btn" data-scale="0.8">80%</button>
           <button class="scale-btn" data-scale="0.9">90%</button>
@@ -410,7 +445,7 @@
       </div>
 
       <div class="settings-section">
-        <label class="settings-label">ВЫБОР ТЕМЫ:</label>
+        <label class="settings-label">ТЕМА</label>
         <div class="theme-grid">
           <button class="theme-select-btn" data-theme="black">Чёрная</button>
           <button class="theme-select-btn" data-theme="gray">Серая</button>
@@ -425,25 +460,13 @@
       </div>
 
       <div class="settings-section">
-        <label class="settings-label">СВОЯ ТЕМА:</label>
+        <label class="settings-label">СВОЯ ТЕМА</label>
         <div class="custom-theme-controls">
-          <div class="color-picker-item">
-            <span>Фон:</span>
-            <input type="color" id="custom-color-bg" value="#0d1117" />
-          </div>
-          <div class="color-picker-item">
-            <span>Панели:</span>
-            <input type="color" id="custom-color-panel" value="#161b22" />
-          </div>
-          <div class="color-picker-item">
-            <span>Текст:</span>
-            <input type="color" id="custom-color-text" value="#e6edf3" />
-          </div>
-          <div class="color-picker-item">
-            <span>Акцент:</span>
-            <input type="color" id="custom-color-accent" value="#58a6ff" />
-          </div>
-          <button id="apply-custom-theme-btn">ПРИМЕНИТЬ СВОЮ</button>
+          <div class="color-picker-item"><span>Фон:</span><input type="color" id="custom-color-bg" value="#0d1117" /></div>
+          <div class="color-picker-item"><span>Панели:</span><input type="color" id="custom-color-panel" value="#161b22" /></div>
+          <div class="color-picker-item"><span>Текст:</span><input type="color" id="custom-color-text" value="#e6edf3" /></div>
+          <div class="color-picker-item"><span>Акцент:</span><input type="color" id="custom-color-accent" value="#58a6ff" /></div>
+          <button id="apply-custom-theme-btn">ПРИМЕНИТЬ</button>
         </div>
       </div>
 
@@ -453,14 +476,14 @@
     </div>
   </div>
 
-  <!-- МОДАЛКА ПРЕДУПРЕЖДЕНИЯ С ТАЙМЕРОМ 9 СЕКУНД (САМОУНИЧТОЖЕНИЕ) -->
+  <!-- ПРЕДУПРЕЖДЕНИЕ О САМОУНИЧТОЖЕНИИ -->
   <div id="self-destruct-warn-modal" class="modal-overlay hidden">
     <div class="confirm-window">
-      <div class="confirm-title">⚠️ СМЕРТЕЛЬНОЕ ПРЕДУПРЕЖДЕНИЕ</div>
+      <div class="confirm-title">СМЕРТЕЛЬНОЕ ПРЕДУПРЕЖДЕНИЕ</div>
       <div class="confirm-desc">
-        Вы точно это хотите сделать?<br><br>
-        Если вы включите эту функцию, выйдете из аккаунта и попытаетесь зайти, не зная пароля, ваш аккаунт и ваши переписки <strong>БУДУТ УДАЛЕНЫ НАВСЕГДА</strong> без шанса на восстановление.<br><br>
-        Вы уверены, что хотите продолжить?
+        Вы точно этого хотите?<br><br>
+        Если включить, выйти из аккаунта и ввести неверный пароль указанное число раз — аккаунт и все переписки <strong>БУДУТ УДАЛЕНЫ НАВСЕГДА</strong>.<br><br>
+        Продолжить?
       </div>
       <div class="confirm-actions">
         <button id="confirm-self-destruct-btn" class="btn-danger-solid" disabled>ПОДОЖДИТЕ (9)...</button>
@@ -469,7 +492,7 @@
     </div>
   </div>
 
-  <!-- МОДАЛКА ПАРОЛЯ АДМИНА -->
+  <!-- ПАРОЛЬ АДМИНА -->
   <div id="admin-auth-modal" class="modal-overlay hidden">
     <div class="modal-window">
       <input type="password" id="admin-pass-input" placeholder="Пароль" autocomplete="off" />
@@ -480,31 +503,29 @@
   <div id="admin-panel" class="modal-overlay hidden">
     <div class="admin-window">
       <div class="admin-header">
-        <span>КОНСОЛЬ УПРАВЛЕНИЯ</span>
-        <button id="admin-close-btn">[X]</button>
+        <span>КОНСОЛЬ</span>
+        <button id="admin-close-btn">✕</button>
       </div>
-      
       <div class="admin-controls">
         <button id="generate-cid-btn">СГЕНЕРИРОВАТЬ CID</button>
         <span id="last-generated-cid">CID: ---</span>
-        <button id="copy-cid-btn" class="hidden">СКОПИРОВАТЬ</button>
+        <button id="copy-cid-btn" class="hidden">КОПИРОВАТЬ</button>
       </div>
-
-      <div class="admin-list-title">СПИСОК ВСЕХ CID В ОБЛАКЕ:</div>
+      <div class="admin-list-title">СПИСОК CID:</div>
       <div class="admin-cid-list" id="admin-cid-list"></div>
     </div>
   </div>
 
-  <!-- ПОДТВЕРЖДЕНИЕ РУЧНОГО УДАЛЕНИЯ ПОЛЬЗОВАТЕЛЯ -->
+  <!-- ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ -->
   <div id="delete-confirm-modal" class="modal-overlay hidden">
     <div class="confirm-window">
-      <div class="confirm-title">УДАЛЕНИЕ CID НАВСЕГДА</div>
+      <div class="confirm-title">УДАЛЕНИЕ CID</div>
       <div class="confirm-desc">
-        Пользователь исчезнет навсегда без возможности восстановления.<br>
-        Чтобы подтвердить, введите фразу:<br>
+        Пользователь исчезнет навсегда.<br>
+        Введите фразу для подтверждения:<br>
         <strong>да я хочу этого</strong>
       </div>
-      <input type="text" id="delete-phrase-input" autocomplete="off" placeholder="Введите фразу..." />
+      <input type="text" id="delete-phrase-input" autocomplete="off" placeholder="Фраза..." />
       <div class="confirm-actions">
         <button id="confirm-delete-btn" disabled>УДАЛИТЬ</button>
         <button id="cancel-delete-btn">ОТМЕНА</button>
@@ -512,10 +533,8 @@
     </div>
   </div>
 
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-  
-  <script src="js/app.js?v=5"></script>
+  <script src="js/app.js?v=6"></script>
 </body>
 </html>
