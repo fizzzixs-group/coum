@@ -186,6 +186,7 @@ const activeChatAvatar = document.getElementById('active-chat-avatar');
 const activePeerHeaderEl = document.getElementById('active-peer-header');
 const activeGroupSubtitle = document.getElementById('active-group-subtitle');
 const groupManageBtn = document.getElementById('group-manage-btn');
+const startGroupCallBtn = document.getElementById('start-group-call-btn');
 const mobileBackBtn = document.getElementById('mobile-back-btn');
 const messagesContainer = document.getElementById('messages-container');
 const messageForm = document.getElementById('message-form');
@@ -481,6 +482,7 @@ function updateTopBarInfo() {
     activePeerHeaderEl.textContent = 'ВЫБЕРИТЕ ДИАЛОГ';
     activeGroupSubtitle.classList.add('hidden');
     groupManageBtn.classList.add('hidden');
+    startGroupCallBtn.classList.add('hidden');
     startCallBtn.classList.remove('hidden');
     activeChatAvatar.style.backgroundImage = 'none';
     return;
@@ -493,6 +495,10 @@ function updateTopBarInfo() {
     activeGroupSubtitle.classList.remove('hidden');
     groupManageBtn.classList.remove('hidden');
     startCallBtn.classList.add('hidden');
+    
+    // Показываем кнопку группового звонка для групп (валидация кол-ва участников при клике)
+    startGroupCallBtn.classList.remove('hidden');
+    
     activeChatAvatar.style.backgroundImage = 'none';
   } else {
     const peerObj = cloudUsers[activeTargetID] || {};
@@ -501,6 +507,7 @@ function updateTopBarInfo() {
     activePeerHeaderEl.textContent = `${name} (${cidLabel})`;
     activeGroupSubtitle.classList.add('hidden');
     groupManageBtn.classList.add('hidden');
+    startGroupCallBtn.classList.add('hidden');
     startCallBtn.classList.remove('hidden');
 
     if (peerObj.avatarUrl) {
@@ -1416,6 +1423,10 @@ function initCallSignalingListener() {
     }
   });
 }
+
+startGroupCallBtn.addEventListener('click', () => {
+  startGroupCall();
+});
 
 startCallBtn.addEventListener('click', async () => {
   if (!activeTargetID || !currentAuthCID || activeTargetType === 'group') return;
@@ -2636,6 +2647,15 @@ window.addEventListener('keydown', (e) => {
       imageViewerModal.classList.add('hidden');
       viewerImg.src = '';
     }
+    if (!document.getElementById('group-call-modal').classList.contains('hidden')) {
+      if (window.grpCallManager) window.grpCallManager.cleanup();
+    }
+    if (!document.getElementById('active-call-modal').classList.contains('hidden')) {
+      cleanupCall();
+    }
+    if (!document.getElementById('incoming-call-modal').classList.contains('hidden')) {
+      rejectIncomingCall();
+    }
   }
 });
 
@@ -2644,6 +2664,274 @@ messageInput.addEventListener('focus', () => {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }, 300);
 });
+
+// ==================== GRP CALL MESH (3 PERSONS) ====================
+
+// Бесплатный TURN для NAT traversal (Metered.ca)
+const GRP_RTC_CONFIG = {
+  iceServers: [
+    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+  ]
+};
+
+class GroupCallManager {
+  constructor(chatId, participants) {
+    this.chatId = chatId;
+    this.participants = participants; // [{cid, name, isSelf}]
+    this.myCid = currentAuthCID;
+    this.peerConnections = new Map(); // cid -> RTCPeerConnection
+    this.localStream = null;
+    this.isMuted = false;
+    this.audioLevelInterval = null;
+    this.callStartTime = null;
+    this.callTimerInterval = null;
+    this.signalingRef = callsRef.child(chatId).child('mesh');
+    this.mySignalRef = this.signalingRef.child(this.myCid);
+    this.cleanupDone = false;
+  }
+
+  async start() {
+    try {
+      this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      this.setupAudioLevelMonitoring();
+      this.createPeerConnections();
+      this.setupSignalingListeners();
+      await this.createAndSendOffers();
+      this.startCallTimer();
+      this.showGroupCallModal();
+    } catch (err) {
+      console.error('Group call start error:', err);
+      alert('Не удалось начать групповой звонок: ' + err.message);
+      this.cleanup();
+    }
+  }
+
+  createPeerConnections() {
+    this.participants.forEach(p => {
+      if (p.cid === this.myCid) return;
+      const pc = new RTCPeerConnection(GRP_RTC_CONFIG);
+      this.localStream.getTracks().forEach(track => pc.addTrack(track, this.localStream));
+      
+      pc.ontrack = (event) => {
+        this.handleRemoteTrack(p.cid, event.streams[0]);
+      };
+      
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          this.mySignalRef.child('candidates').child(p.cid).push(JSON.stringify(event.candidate));
+        }
+      };
+      
+      pc.onconnectionstatechange = () => {
+        this.updatePeerConnectionState(p.cid, pc.connectionState);
+        if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+          setTimeout(() => pc.restartIce(), 2000);
+        }
+      };
+      
+      this.peerConnections.set(p.cid, pc);
+    });
+  }
+
+  async createAndSendOffers() {
+    for (const [cid, pc] of this.peerConnections) {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await this.mySignalRef.child('offers').child(cid).set(JSON.stringify(offer));
+    }
+  }
+
+  setupSignalingListeners() {
+    // Слушаем входящие offer/answer/candidates от других
+    this.signalingRef.on('child_added', (snap) => {
+      const senderCid = snap.key;
+      if (senderCid === this.myCid) return;
+      const data = snap.val();
+      this.handleSignalingData(senderCid, data);
+    });
+    
+    this.signalingRef.on('child_changed', (snap) => {
+      const senderCid = snap.key;
+      if (senderCid === this.myCid) return;
+      const data = snap.val();
+      this.handleSignalingData(senderCid, data);
+    });
+  }
+
+  async handleSignalingData(senderCid, data) {
+    const pc = this.peerConnections.get(senderCid);
+    if (!pc) return;
+
+    if (data.offers && data.offers[this.myCid]) {
+      const offer = JSON.parse(data.offers[this.myCid]);
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await this.mySignalRef.child('answers').child(senderCid).set(JSON.stringify(answer));
+    }
+
+    if (data.answers && data.answers[this.myCid]) {
+      const answer = JSON.parse(data.answers[this.myCid]);
+      if (pc.signalingState === 'have-local-offer') {
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
+      }
+    }
+
+    if (data.candidates && data.candidates[this.myCid]) {
+      const candidates = data.candidates[this.myCid];
+      Object.values(candidates).forEach(async (candStr) => {
+        try {
+          const candidate = JSON.parse(candStr);
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {}
+      });
+    }
+  }
+
+  handleRemoteTrack(peerCid, stream) {
+    const audioEl = document.getElementById(`grp-audio-${peerCid}`);
+    if (audioEl) {
+      audioEl.srcObject = stream;
+    }
+  }
+
+  setupAudioLevelMonitoring() {
+    const audioCtx = new AudioContext();
+    const source = audioCtx.createMediaStreamSource(this.localStream);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    this.audioLevelInterval = setInterval(() => {
+      analyser.getByteFrequencyData(dataArray);
+      const sum = dataArray.reduce((a, b) => a + b, 0);
+      const level = Math.min(100, Math.round((sum / dataArray.length) * 2));
+      this.updateMyAudioLevel(level);
+    }, 100);
+  }
+
+  updateMyAudioLevel(level) {
+    const el = document.getElementById('grp-my-level');
+    if (el) el.style.width = `${level}%`;
+    // Отправляем уровень другим (опционально, через signaling)
+  }
+
+  updatePeerConnectionState(cid, state) {
+    const statusEl = document.getElementById(`grp-status-${cid}`);
+    if (statusEl) {
+      statusEl.textContent = state === 'connected' ? '🟢' : state === 'connecting' ? '🟡' : '🔴';
+    }
+  }
+
+  startCallTimer() {
+    this.callStartTime = Date.now();
+    this.callTimerInterval = setInterval(() => {
+      const diff = Date.now() - this.callStartTime;
+      const mins = String(Math.floor(diff / 60000)).padStart(2, '0');
+      const secs = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+      const timerEl = document.getElementById('grp-call-timer');
+      if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+    }, 1000);
+  }
+
+  showGroupCallModal() {
+    const modal = document.getElementById('group-call-modal');
+    const container = document.getElementById('grp-participants-container');
+    container.innerHTML = '';
+
+    this.participants.forEach(p => {
+      const isSelf = p.cid === this.myCid;
+      const div = document.createElement('div');
+      div.className = `grp-participant ${isSelf ? 'self' : ''}`;
+      div.innerHTML = `
+        <div class="grp-avatar" style="${p.avatarUrl ? `background-image:url('${p.avatarUrl}')` : ''}"></div>
+        <div class="grp-info">
+          <div class="grp-name">${escapeHTML(p.name)}${isSelf ? ' (Я)' : ''}</div>
+          <div class="grp-status" id="grp-status-${p.cid}">${isSelf ? '🟢' : '🟡'}</div>
+          <div class="grp-level-bar"><div class="grp-level-fill" id="${isSelf ? 'grp-my-level' : `grp-level-${p.cid}`}"></div></div>
+        </div>
+        <audio id="grp-audio-${p.cid}" autoplay playsinline ${isSelf ? 'muted' : ''}></audio>
+        ${isSelf ? `<button class="grp-mute-btn" id="grp-mute-btn" onclick="window.grpCallManager.toggleMute()">🎤 ВКЛ</button>` : ''}
+      `;
+      container.appendChild(div);
+    });
+
+    document.getElementById('grp-end-call-btn').onclick = () => this.cleanup();
+    
+    // Закрытие по клику на фон
+    modal.onclick = (e) => {
+      if (e.target === modal) this.cleanup();
+    };
+
+    modal.classList.remove('hidden');
+  }
+
+  toggleMute() {
+    this.isMuted = !this.isMuted;
+    this.localStream.getAudioTracks().forEach(t => t.enabled = !this.isMuted);
+    const btn = document.getElementById('grp-mute-btn');
+    if (btn) btn.textContent = this.isMuted ? '🎤 ВЫКЛ' : '🎤 ВКЛ';
+  }
+
+  cleanup() {
+    if (this.cleanupDone) return;
+    this.cleanupDone = true;
+
+    if (this.audioLevelInterval) clearInterval(this.audioLevelInterval);
+    if (this.callTimerInterval) clearInterval(this.callTimerInterval);
+
+    this.peerConnections.forEach(pc => pc.close());
+    this.peerConnections.clear();
+
+    if (this.localStream) {
+      this.localStream.getTracks().forEach(t => t.stop());
+      this.localStream = null;
+    }
+
+    // Удаляем слушатели сигналинга
+    if (this.signalingRef) {
+      this.signalingRef.off();
+    }
+    if (this.mySignalRef) {
+      this.mySignalRef.remove(); // чистим свои сигналы
+    }
+
+    document.getElementById('group-call-modal').classList.add('hidden');
+    window.grpCallManager = null;
+  }
+}
+
+// Глобальная функция запуска группового звонка
+async function startGroupCall() {
+  if (activeTargetType !== 'group' || !activeTargetID) return;
+  
+  const groupSnap = await groupsRef.child(activeTargetID).once('value');
+  const group = groupSnap.val();
+  if (!group || !group.members) return;
+
+  const memberCids = Object.keys(group.members);
+  if (memberCids.length < 2 || memberCids.length > 3) {
+    alert('Групповой звонок работает только для 2-3 участников');
+    return;
+  }
+
+  const participants = memberCids.map(cid => {
+    const u = cloudUsers[cid] || {};
+    return {
+      cid,
+      name: u.name || cid,
+      avatarUrl: u.avatarUrl || '',
+      isSelf: cid === currentAuthCID
+    };
+  });
+
+  window.grpCallManager = new GroupCallManager(activeTargetID, participants);
+  await window.grpCallManager.start();
+}
 
 // Инициализация при старте
 initThemeAndScale();

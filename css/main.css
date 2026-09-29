@@ -1978,6 +1978,157 @@ html, body {
   color: var(--text-main);
 }
 
+/* ==================== ГРУППОВОЙ ЗВОНОК (MESH) ==================== */
+.grp-call-window {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  width: 90%;
+  max-width: 360px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.grp-call-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.grp-call-title {
+  font-size: 12px;
+  color: var(--accent-color);
+  letter-spacing: 2px;
+}
+
+.grp-call-timer {
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--text-bright);
+  font-family: monospace;
+}
+
+.grp-participants {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.grp-participant {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.grp-participant.self {
+  border-color: var(--accent-color);
+  background: rgba(var(--accent-rgb, 88, 166, 255), 0.1);
+}
+
+.grp-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+}
+
+.grp-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.grp-name {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--text-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.grp-status {
+  font-size: 11px;
+}
+
+.grp-level-bar {
+  height: 4px;
+  background: var(--bg-main);
+  border-radius: 2px;
+  overflow: hidden;
+  width: 100%;
+  max-width: 120px;
+}
+
+.grp-level-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent-color);
+  transition: width 0.1s linear;
+}
+
+.grp-mute-btn {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-bright);
+  padding: 6px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.grp-mute-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-color);
+}
+
+.grp-call-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+}
+
+.grp-call-actions button {
+  padding: 10px 20px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+}
+
+/* Скрываем кнопку группового звонка по умолчанию, показываем в группах */
+#start-group-call-btn.hidden {
+  display: none;
+}
+
+#start-group-call-btn {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-bright);
+  font-size: 13px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+#start-group-call-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--accent-color);
+}
+
 /* Мобильная версия */
 @media (max-width: 768px) {
   .sidebar {

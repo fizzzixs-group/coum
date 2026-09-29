@@ -102,6 +102,7 @@
         </div>
         <div class="chat-topbar-right">
           <button id="group-manage-btn" class="call-action-btn hidden" title="Настройки группы">👥 ИНФО</button>
+          <button id="start-group-call-btn" class="call-action-btn hidden" title="Групповой звонок (до 3 чел)">👥📞</button>
           <button id="start-call-btn" class="call-action-btn" title="Голосовой звонок">📞</button>
         </div>
       </div>
@@ -249,6 +250,20 @@
       <div class="call-actions">
         <button id="toggle-mute-btn" class="call-btn-mute">МИКРОФОН: ВКЛ</button>
         <button id="end-call-btn" class="call-btn-reject">ЗАВЕРШИТЬ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ГРУППОВОЙ ЗВОНОК (MESH, до 3 чел) -->
+  <div id="group-call-modal" class="modal-overlay hidden">
+    <div class="grp-call-window">
+      <div class="grp-call-header">
+        <div class="grp-call-title">ГРУППОВОЙ ЗВОНОК</div>
+        <div class="grp-call-timer" id="grp-call-timer">00:00</div>
+      </div>
+      <div class="grp-participants" id="grp-participants-container"></div>
+      <div class="grp-call-actions">
+        <button id="grp-end-call-btn" class="call-btn-reject">ЗАВЕРШИТЬ</button>
       </div>
     </div>
   </div>
